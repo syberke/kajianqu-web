@@ -1,22 +1,20 @@
 // supabase/functions/transcribe-quran/index.ts
-// Deploy: supabase functions deploy transcribe-quran
-
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+// Deploy: supabase functions deploy transcribe-quran --no-verify-jwt
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { status: 200, headers: corsHeaders })
   }
 
   try {
     const formData = await req.formData()
     const audioFile = formData.get('audio') as File
-    const language = (formData.get('language') as string) || 'ar'
 
     if (!audioFile) {
       return new Response(JSON.stringify({ error: 'No audio file provided' }), {
@@ -25,41 +23,53 @@ serve(async (req) => {
       })
     }
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
-      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+    const groqApiKey = Deno.env.get('GROQ_API_KEY')
+    if (!groqApiKey) {
+      return new Response(JSON.stringify({ error: 'Groq API key not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Kirim ke Whisper API
-    const whisperForm = new FormData()
-    whisperForm.append('file', audioFile, 'audio.webm')
-    whisperForm.append('model', 'whisper-1')
-    whisperForm.append('language', language)
-    whisperForm.append('response_format', 'verbose_json')
+    // Groq hanya terima: mp3, mp4, mpeg, mpga, m4a, wav, webm
+    // Paksa mime type ke audio/webm dan nama file .webm
+    const audioBuffer = await audioFile.arrayBuffer()
+    const cleanBlob = new Blob([audioBuffer], { type: 'audio/webm' })
+    const cleanFile = new File([cleanBlob], 'recording.webm', { type: 'audio/webm' })
 
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    console.log(`Audio: ${audioBuffer.byteLength} bytes → sending as audio/webm`)
+
+    const groqForm = new FormData()
+    groqForm.append('file', cleanFile, 'recording.webm')
+    groqForm.append('model', 'whisper-large-v3-turbo')
+    groqForm.append('language', 'ar')
+    groqForm.append('response_format', 'json')
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${openaiApiKey}` },
-      body: whisperForm,
+      headers: { Authorization: `Bearer ${groqApiKey}` },
+      body: groqForm,
     })
 
-    if (!whisperResponse.ok) {
-      const err = await whisperResponse.text()
-      return new Response(JSON.stringify({ error: 'Whisper API error', details: err }), {
+    if (!groqRes.ok) {
+      const errText = await groqRes.text()
+      console.error('Groq error:', errText)
+      return new Response(JSON.stringify({ error: 'Groq API error', details: errText }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const result = await whisperResponse.json()
+    const result = await groqRes.json()
+    const text = result?.text?.trim() ?? ''
+    console.log('Transcribed:', text)
 
-    return new Response(JSON.stringify({ text: result.text, segments: result.segments }), {
+    return new Response(JSON.stringify({ text }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
+    console.error('Function error:', String(error))
     return new Response(JSON.stringify({ error: String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

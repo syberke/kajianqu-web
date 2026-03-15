@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Mic, MicOff, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Mic, MicOff, RotateCcw, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,9 +12,9 @@ import { SessionReview } from '@/components/quran/SessionReview'
 import { useQuranRecorder } from '@/components/quran/useQuranRecorder'
 import { buildWordList, getSurah, compareWord } from '@/lib/quran-data'
 import { saveSession } from '@/service/quran-session.service'
-import { WordState, SessionMistake } from '../../../types/quran'
+import { WordState, SessionMistake } from '@/types/quran'
 
-type SessionStatus = 'idle' | 'recording' | 'done' | 'error'
+type SessionStatus = 'idle' | 'recording' | 'processing' | 'done' | 'error'
 
 export default function TahfidzPage() {
   const [surahId, setSurahId] = useState(1)
@@ -22,61 +22,57 @@ export default function TahfidzPage() {
   const [ayahEnd, setAyahEnd] = useState(7)
   const [words, setWords] = useState(() => buildWordList(1, 1, 7))
   const [wordStates, setWordStates] = useState<WordState[]>(() => buildWordList(1, 1, 7).map(() => 'idle'))
-  const [currentIndex, setCurrentIndex] = useState(0)
   const [mistakes, setMistakes] = useState<SessionMistake[]>([])
   const [status, setStatus] = useState<SessionStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [transcript, setTranscript] = useState('')
   const [showReview, setShowReview] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-
   const startTimeRef = useRef<number>(0)
-  const currentIndexRef = useRef(0)
-  const wordStatesRef = useRef<WordState[]>([])
-  const mistakesRef = useRef<SessionMistake[]>([])
-  const wordsRef = useRef(words)
-
-  // Sync refs
-  useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
-  useEffect(() => { wordStatesRef.current = wordStates }, [wordStates])
-  useEffect(() => { mistakesRef.current = mistakes }, [mistakes])
-  useEffect(() => { wordsRef.current = words }, [words])
 
   const handleTranscript = useCallback((text: string) => {
-    setTranscript(text)
+    setStatus('done')
     const spokenWords = text.trim().split(/\s+/).filter(Boolean)
+    const currentWords = words
 
-    spokenWords.forEach(spoken => {
-      const idx = currentIndexRef.current
-      if (idx >= wordsRef.current.length) return
+    const newStates: WordState[] = currentWords.map(() => 'idle')
+    const newMistakes: SessionMistake[] = []
 
-      const expected = wordsRef.current[idx]
-      const isCorrect = compareWord(expected.arabic, spoken)
-      const newState: WordState = isCorrect ? 'correct' : 'wrong'
-
-      wordStatesRef.current = [...wordStatesRef.current]
-      wordStatesRef.current[idx] = newState
-      setWordStates([...wordStatesRef.current])
-
+    spokenWords.forEach((spoken, i) => {
+      if (i >= currentWords.length) return
+      const isCorrect = compareWord(currentWords[i].arabic, spoken)
+      newStates[i] = isCorrect ? 'correct' : 'wrong'
       if (!isCorrect) {
-        const mistake: SessionMistake = {
-          wordArabic: expected.arabic,
+        newMistakes.push({
+          wordArabic: currentWords[i].arabic,
           wordSpoken: spoken,
-          ayahNumber: expected.ayahNumber,
-          wordIndex: expected.wordIndex,
-        }
-        mistakesRef.current = [...mistakesRef.current, mistake]
-        setMistakes([...mistakesRef.current])
-      }
-
-      currentIndexRef.current = idx + 1
-      setCurrentIndex(idx + 1)
-
-      if (idx + 1 >= wordsRef.current.length) {
-        finishSession()
+          ayahNumber: currentWords[i].ayahNumber,
+          wordIndex: currentWords[i].wordIndex,
+        })
       }
     })
-  }, [])
+
+    setWordStates(newStates)
+    setMistakes(newMistakes)
+    setShowReview(true)
+
+    const duration = Math.round((Date.now() - startTimeRef.current) / 1000)
+    const correct = newStates.filter(s => s === 'correct').length
+    const surah = getSurah(surahId)
+
+    setIsSaving(true)
+    saveSession({
+      mode: 'tahfidz',
+      surahId,
+      surahName: surah?.name ?? '',
+      ayahStart,
+      ayahEnd,
+      totalWords: currentWords.length,
+      correctWords: correct,
+      accuracy: currentWords.length > 0 ? (correct / currentWords.length) * 100 : 0,
+      mistakes: newMistakes,
+      durationSeconds: duration,
+    }).finally(() => setIsSaving(false))
+  }, [words, surahId, ayahStart, ayahEnd])
 
   const handleError = useCallback((err: string) => {
     setErrorMessage(err)
@@ -92,15 +88,10 @@ export default function TahfidzPage() {
     const w = buildWordList(sId, aStart, aEnd)
     setWords(w)
     setWordStates(w.map(() => 'idle'))
-    setCurrentIndex(0)
     setMistakes([])
-    setTranscript('')
     setShowReview(false)
     setStatus('idle')
-    wordsRef.current = w
-    wordStatesRef.current = w.map(() => 'idle')
-    currentIndexRef.current = 0
-    mistakesRef.current = []
+    setErrorMessage('')
   }, [])
 
   const handleSurahChange = (id: number) => {
@@ -112,57 +103,21 @@ export default function TahfidzPage() {
     reloadWords(id, 1, surah.totalAyat)
   }
 
-  const handleAyahStartChange = (n: number) => {
-    setAyahStart(n)
-    if (n > ayahEnd) setAyahEnd(n)
-    reloadWords(surahId, n, Math.max(n, ayahEnd))
-  }
-
-  const handleAyahEndChange = (n: number) => {
-    setAyahEnd(n)
-    reloadWords(surahId, ayahStart, n)
-  }
-
   const toggleRecording = async () => {
     if (isRecording) {
+      setStatus('processing')
       await stopRecording()
-      setStatus('idle')
     } else {
       setStatus('recording')
       setErrorMessage('')
+      setShowReview(false)
+      setWordStates(words.map(() => 'idle'))
       startTimeRef.current = Date.now()
       await startRecording()
     }
   }
 
-  const finishSession = async () => {
-    await stopRecording()
-    setStatus('done')
-    setShowReview(true)
-
-    const duration = Math.round((Date.now() - startTimeRef.current) / 1000)
-    const correct = wordStatesRef.current.filter(s => s === 'correct').length
-    const surah = getSurah(surahId)
-
-    setIsSaving(true)
-    await saveSession({
-      mode: 'tahfidz',
-      surahId,
-      surahName: surah?.name ?? '',
-      ayahStart,
-      ayahEnd,
-      totalWords: wordsRef.current.length,
-      correctWords: correct,
-      accuracy: wordsRef.current.length > 0 ? (correct / wordsRef.current.length) * 100 : 0,
-      mistakes: mistakesRef.current,
-      durationSeconds: duration,
-    })
-    setIsSaving(false)
-  }
-
-  const resetSession = useCallback(() => {
-    reloadWords(surahId, ayahStart, ayahEnd)
-  }, [surahId, ayahStart, ayahEnd, reloadWords])
+  const resetSession = () => reloadWords(surahId, ayahStart, ayahEnd)
 
   const surah = getSurah(surahId)
   const latinAll = surah?.ayat.slice(ayahStart - 1, ayahEnd).map(a => a.latin).join('  ') ?? ''
@@ -174,7 +129,7 @@ export default function TahfidzPage() {
       <div>
         <h1 className="text-xl font-medium">Tahfidz — Latihan Hafalan</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Baca hafalan kamu, AI akan mendeteksi kesalahan secara realtime
+          Baca hafalan kamu, AI akan mendeteksi kesalahan setelah kamu selesai
         </p>
       </div>
 
@@ -188,32 +143,19 @@ export default function TahfidzPage() {
             ayahStart={ayahStart}
             ayahEnd={ayahEnd}
             onSurahChange={handleSurahChange}
-            onAyahStartChange={handleAyahStartChange}
-            onAyahEndChange={handleAyahEndChange}
+            onAyahStartChange={(n) => { setAyahStart(n); reloadWords(surahId, n, Math.max(n, ayahEnd)) }}
+            onAyahEndChange={(n) => { setAyahEnd(n); reloadWords(surahId, ayahStart, n) }}
             disabled={isRecording}
           />
 
           <QuranWordDisplay
             words={words}
             states={wordStates}
-            currentIndex={currentIndex}
+            currentIndex={-1}
             latin={latinAll}
             translation={translationAll}
           />
 
-          {/* Transcript realtime */}
-          <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Bacaan kamu (realtime)</p>
-            <div
-              className="min-h-[40px] p-3 rounded-lg bg-muted/50 text-right"
-              dir="rtl"
-              style={{ fontFamily: "'Scheherazade New', serif", fontSize: '18px' }}
-            >
-              {transcript || <span className="text-muted-foreground/50 text-sm">—</span>}
-            </div>
-          </div>
-
-          {/* Error message */}
           {status === 'error' && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30">
               <AlertCircle size={14} className="text-red-500 mt-0.5 shrink-0" />
@@ -221,50 +163,47 @@ export default function TahfidzPage() {
             </div>
           )}
 
-          {/* Progress */}
-          {currentIndex > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${(currentIndex / words.length) * 100}%` }}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">{currentIndex}/{words.length}</span>
-            </div>
-          )}
-
-          {/* Controls */}
           <div className="flex items-center gap-2">
             <Button
               onClick={toggleRecording}
-              disabled={status === 'done'}
+              disabled={status === 'processing'}
               className="flex-1 gap-2"
               variant={isRecording ? 'destructive' : 'default'}
             >
-              {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-              {isRecording ? 'Berhenti' : 'Mulai Baca'}
+              {status === 'processing' ? (
+                <><Loader2 size={16} className="animate-spin" /> Memproses...</>
+              ) : isRecording ? (
+                <><MicOff size={16} /> Selesai Baca</>
+              ) : (
+                <><Mic size={16} /> Mulai Baca</>
+              )}
             </Button>
 
-            <Button onClick={resetSession} variant="outline" size="icon">
+            <Button onClick={resetSession} variant="outline" size="icon" disabled={isRecording}>
               <RotateCcw size={16} />
             </Button>
 
             {status === 'done' && (
-              <Badge className="gap-1" variant="secondary">
+              <Badge variant="secondary" className="gap-1">
                 <CheckCircle2 size={12} />
-                {correctCount}/{words.length} benar
+                {correctCount}/{words.length}
               </Badge>
             )}
           </div>
 
-          {isSaving && (
-            <p className="text-xs text-muted-foreground text-center">Menyimpan sesi...</p>
+          {isRecording && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Sedang merekam... klik &quot;Selesai Baca&quot; saat sudah selesai
+              </p>
+            </div>
           )}
+
+          {isSaving && <p className="text-xs text-muted-foreground text-center">Menyimpan sesi...</p>}
         </CardContent>
       </Card>
 
-      {/* Review */}
       {showReview && (
         <SessionReview
           totalWords={words.length}
