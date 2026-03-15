@@ -10,11 +10,11 @@ const supabaseAdmin = createClient(
 
 export async function updateStatusDonasi(
   donasiId: string, 
-  status: 'success' | 'failed', // Sesuai pilihan di UI
+  status: 'success' | 'failed', 
   catatan?: string
 ) {
   const { error } = await supabaseAdmin
-    .from('donations') // Pastikan nama tabelnya 'donations'
+    .from('donations') 
     .update({ 
       payment_status: status, // Sesuai kolom database kamu
       note: catatan || null,   // Sesuai kolom database kamu

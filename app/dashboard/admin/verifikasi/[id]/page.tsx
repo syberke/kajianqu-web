@@ -3,7 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import ProfileDetailClient from './ProfileDetailClient'
 import { notFound } from 'next/navigation'
 
-export default async function UserDetailPage({ params }: { params: { id: string } }) {
+// 1. Definisikan params sebagai Promise
+export default async function UserDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  // 2. Wajib di-await sebelum digunakan
+  const { id } = await params;
+
   await requireRole('admin')
 
   // Ambil data spesifik 1 user
@@ -18,7 +26,7 @@ export default async function UserDetailPage({ params }: { params: { id: string 
       id, nama, email, role, no_wa, created_at,
       asatidz_profiles ( bidang, approved, cv_url )
     `)
-    .eq('id', params.id)
+    .eq('id', id) // Gunakan id hasil await
     .single()
 
   // Jika user tidak ditemukan, tampilkan halaman 404 Not Found

@@ -1,10 +1,10 @@
-// 1. Ganti import-nya ke file 'supabase.ts' yang sudah kita buat sebelumnya
-import { supabase } from './supabase'; 
+
+import { supabase } from './supabase/client'; 
 
 export const MateriService = {
-  // Ambil semua materi untuk halaman list
+
   async getAllMaterials(search = '', categoryId = '') {
-    // Gunakan 'supabase' (tanpa const lagi karena sudah di-import di atas)
+  
     let query = supabase
       .from('materials')
       .select(`
@@ -22,7 +22,7 @@ export const MateriService = {
     return data;
   },
 
-  // Ambil detail materi berdasarkan slug untuk halaman detail
+
   async getMaterialBySlug(slug: string) {
     const { data, error } = await supabase
       .from('materials')
