@@ -1,14 +1,10 @@
-// app/quran-ai/tahsin/page.tsx
+// app/dashboard/siswa/quran-ai/tahsin/page.tsx
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { Play, Pause, Mic, MicOff, CheckCircle2, RotateCcw, Volume2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { SurahSelector } from '@/components/quran/SurahSelector'
-import { QuranWordDisplay } from '@/components/quran/QuranWordDisplay'
-import { SessionReview } from '@/components/quran/SessionReview'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { Play, Pause, Mic, MicOff, RotateCcw, Volume2, AlertCircle } from 'lucide-react'
+import TajwidFeedbackCard from '@/components/quran/TajwidFeedbackCard'
+import { useTajwidFeedback } from '@/components/quran/useTajwidFeedback'
 import { useQuranRecorder } from '@/components/quran/useQuranRecorder'
 import { buildWordList, getSurah, getAudioUrl, compareWord } from '@/lib/quran-data'
 import { saveSession } from '@/service/quran-session.service'
@@ -27,9 +23,15 @@ export default function TahsinPage() {
   const [wordStates, setWordStates] = useState<WordState[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [mistakes, setMistakes] = useState<SessionMistake[]>([])
-  const [transcript, setTranscript] = useState('')
+  const [liveTranscript, setLiveTranscript] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [accuracy, setAccuracy] = useState<number | null>(null)
+
+  // ── FIX 1: deklarasikan surah di atas sebelum dipakai ──
+  const surah = getSurah(surahId)
+
+  const { feedback, isLoading: feedbackLoading, analyze, retry, reset: resetFeedback } = useTajwidFeedback()
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const startTimeRef = useRef(0)
@@ -38,119 +40,133 @@ export default function TahsinPage() {
   const mistakesRef = useRef<SessionMistake[]>([])
   const wordsRef = useRef(words)
 
-  const syncRefs = (w = words, ws = wordStates, ci = currentIndex, m = mistakes) => {
-    wordsRef.current = w
-    wordStatesRef.current = ws
-    currentIndexRef.current = ci
-    mistakesRef.current = m
-  }
+  useEffect(() => { wordsRef.current = words }, [words])
 
-  const handleTranscript = useCallback((text: string) => {
-    setTranscript(text)
+  // ── FIX 2: handleTranscript harus terima (text, isFinal) — 2 argumen ──
+  const handleTranscript = useCallback((text: string, isFinal: boolean) => {
+    setLiveTranscript(text)
     const spokenWords = text.trim().split(/\s+/).filter(Boolean)
 
-    spokenWords.forEach(spoken => {
-      const idx = currentIndexRef.current
+    let localIndex = 0
+    const newStates = [...wordStatesRef.current]
+    const newMistakes = [...mistakesRef.current]
+
+    spokenWords.forEach((spoken) => {
+      const idx = localIndex
       if (idx >= wordsRef.current.length) return
 
-      const expected = wordsRef.current[idx]
-      const isCorrect = compareWord(expected.arabic, spoken)
-      wordStatesRef.current[idx] = isCorrect ? 'correct' : 'wrong'
-      setWordStates([...wordStatesRef.current])
-
-      if (!isCorrect) {
-        const m: SessionMistake = {
-          wordArabic: expected.arabic,
-          wordSpoken: spoken,
-          ayahNumber: expected.ayahNumber,
-          wordIndex: expected.wordIndex,
-        }
-        mistakesRef.current = [...mistakesRef.current, m]
-        setMistakes([...mistakesRef.current])
+      const isCorrect = compareWord(wordsRef.current[idx].arabic, spoken)
+      if (newStates[idx] !== 'correct') {
+        newStates[idx] = isCorrect ? 'correct' : 'wrong'
       }
-
-      currentIndexRef.current = idx + 1
-      setCurrentIndex(idx + 1)
-
-      if (idx + 1 >= wordsRef.current.length) finishSession()
+      if (!isCorrect && !newMistakes.find(m => m.wordIndex === wordsRef.current[idx].wordIndex)) {
+        newMistakes.push({
+          wordArabic: wordsRef.current[idx].arabic,
+          wordSpoken: spoken,
+          ayahNumber: wordsRef.current[idx].ayahNumber,
+          wordIndex: wordsRef.current[idx].wordIndex,
+        })
+      }
+      localIndex++
     })
+
+    wordStatesRef.current = newStates
+    mistakesRef.current = newMistakes
+    currentIndexRef.current = localIndex
+    setWordStates([...newStates])
+    setCurrentIndex(localIndex)
+
+    if (isFinal) {
+      setMistakes([...newMistakes])
+      const correct = newStates.filter(s => s === 'correct').length
+      const acc = wordsRef.current.length > 0
+        ? Math.round((correct / wordsRef.current.length) * 100)
+        : 0
+      setAccuracy(acc)
+      setStep('done')
+
+      const duration = Math.round((Date.now() - startTimeRef.current) / 1000)
+      const currentSurah = getSurah(surahId)
+      setIsSaving(true)
+      saveSession({
+        mode: 'tahsin',
+        surahId,
+        surahName: currentSurah?.name ?? '',
+        ayahStart,
+        ayahEnd,
+        totalWords: wordsRef.current.length,
+        correctWords: correct,
+        accuracy: acc,
+        mistakes: newMistakes,
+        durationSeconds: duration,
+      }).finally(() => setIsSaving(false))
+    }
+  }, [surahId, ayahStart, ayahEnd])
+
+  const handleError = useCallback((msg: string) => {
+    setErrorMessage(msg)
   }, [])
 
-  const handleError = useCallback((err: string) => setErrorMessage(err), [])
+  // ── FIX 3: onFinalAudio pakai surahId langsung (bukan surah yang belum tentu ada) ──
+  const handleFinalAudio = useCallback((blob: Blob) => {
+    const currentSurah = getSurah(surahId)
+    analyze(blob, {
+      surahName: currentSurah?.name ?? `Surah ${surahId}`,
+      ayahStart,
+      ayahEnd,
+      mode: 'tahsin',
+    })
+  }, [surahId, ayahStart, ayahEnd, analyze])
 
   const { isRecording, startRecording, stopRecording } = useQuranRecorder({
     onTranscript: handleTranscript,
     onError: handleError,
+    onFinalAudio: handleFinalAudio,
   })
 
+  // ── Audio player ──
   const playAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (!audioRef.current) audioRef.current = new Audio()
+    const audio = audioRef.current
+
+    if (isPlaying) {
+      audio.pause()
       setIsPlaying(false)
       return
     }
 
-    const audio = new Audio(getAudioUrl(surahId))
-    audioRef.current = audio
-    setIsPlaying(true)
+   const audioUrl = getAudioUrl(surahId)
+    if (!audioUrl) return
+
+    audio.src = audioUrl
+    audio.play().then(() => {
+      setIsPlaying(true)
+      setHasListened(true)
+    }).catch(console.error)
 
     audio.onended = () => {
       setIsPlaying(false)
       setHasListened(true)
-      audioRef.current = null
     }
-
-    audio.onerror = () => {
-      setIsPlaying(false)
-      audioRef.current = null
-      // Tetap allow lanjut meski audio gagal
-      setHasListened(true)
-    }
-
-    audio.play().catch(() => {
-      setIsPlaying(false)
-      setHasListened(true)
-    })
-
-    // Enable after 3 detik jaga-jaga
-    setTimeout(() => setHasListened(true), 3000)
   }
 
-  const goToRead = () => {
-    const w = buildWordList(surahId, ayahStart, ayahEnd)
-    const ws = w.map((): WordState => 'idle')
-    setWords(w)
-    setWordStates(ws)
-    setCurrentIndex(0)
-    setMistakes([])
-    setTranscript('')
-    setStep('read')
-    syncRefs(w, ws, 0, [])
-  }
-
-  const finishSession = async () => {
-    await stopRecording()
-    setStep('done')
-
-    const duration = Math.round((Date.now() - startTimeRef.current) / 1000)
-    const correct = wordStatesRef.current.filter(s => s === 'correct').length
-    const surah = getSurah(surahId)
-
-    setIsSaving(true)
-    await saveSession({
-      mode: 'tahsin',
-      surahId,
-      surahName: surah?.name ?? '',
-      ayahStart,
-      ayahEnd,
-      totalWords: wordsRef.current.length,
-      correctWords: correct,
-      accuracy: wordsRef.current.length > 0 ? (correct / wordsRef.current.length) * 100 : 0,
-      mistakes: mistakesRef.current,
-      durationSeconds: duration,
-    })
-    setIsSaving(false)
+  const toggleRecording = async () => {
+    if (isRecording) {
+      await stopRecording()
+    } else {
+      setErrorMessage('')
+      setLiveTranscript('')
+      wordStatesRef.current = wordsRef.current.map(() => 'idle')
+      mistakesRef.current = []
+      currentIndexRef.current = 0
+      setWordStates(wordsRef.current.map(() => 'idle'))
+      setCurrentIndex(0)
+      setMistakes([])
+      setAccuracy(null)
+      resetFeedback()
+      startTimeRef.current = Date.now()
+      await startRecording()
+    }
   }
 
   const resetAll = () => {
@@ -159,160 +175,304 @@ export default function TahsinPage() {
     setIsPlaying(false)
     setHasListened(false)
     setWordStates([])
+    wordStatesRef.current = []
     setCurrentIndex(0)
+    currentIndexRef.current = 0
     setMistakes([])
-    setTranscript('')
+    mistakesRef.current = []
+    setLiveTranscript('')
     setErrorMessage('')
+    setAccuracy(null)
+    resetFeedback()
   }
 
-  const handleSurahChange = (id: number) => {
-    setSurahId(id)
+  const reloadWords = (sid: number, start: number, end: number) => {
+    const w = buildWordList(sid, start, end)
+    setWords(w)
+    wordsRef.current = w
     resetAll()
   }
 
-  const toggleRecording = async () => {
-    if (isRecording) {
-      await stopRecording()
-    } else {
-      setErrorMessage('')
-      startTimeRef.current = Date.now()
-      await startRecording()
-    }
-  }
-
-  const surah = getSurah(surahId)
-  const latinAll = surah?.ayat.slice(ayahStart - 1, ayahEnd).map(a => a.latin).join('  ') ?? ''
   const correctCount = wordStates.filter(s => s === 'correct').length
+  const totalCount = words.length
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-medium">Tahsin — Latihan Tilawah</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Dengarkan pengajaran dulu, lalu baca dan AI akan mengoreksi bacaanmu
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#F0F4F2] px-4 py-8 flex flex-col items-center">
+      <div className="w-full max-w-2xl space-y-6">
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Pilih Surah & Ayat</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <SurahSelector
-            surahId={surahId}
-            ayahStart={ayahStart}
-            ayahEnd={ayahEnd}
-            onSurahChange={handleSurahChange}
-            onAyahStartChange={(n) => { setAyahStart(n); resetAll() }}
-            onAyahEndChange={(n) => { setAyahEnd(n); resetAll() }}
-            disabled={step === 'read' || isRecording}
-          />
+        {/* ── Header ── */}
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-black text-emerald-900 tracking-tighter">
+            Tahsin <span className="text-emerald-500">· تحسين</span>
+          </h1>
+          <p className="text-xs text-gray-400 font-medium">
+            Dengarkan → Baca → AI koreksi tajwid & makhraj secara <em>live</em>
+          </p>
+        </div>
 
-          {/* Step 1: Dengarkan */}
-          {step === 'listen' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
-                <Button
-                  onClick={playAudio}
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 rounded-full shrink-0"
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                </Button>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{surah?.name} — Mishary Rashid Alafasy</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPlaying ? 'Sedang diputar...' : 'Klik untuk mendengarkan'}
-                  </p>
-                </div>
-                {hasListened && (
-                  <Badge variant="secondary" className="gap-1 text-green-600 dark:text-green-400 shrink-0">
-                    <CheckCircle2 size={12} />
-                    Sudah didengar
-                  </Badge>
-                )}
+        {/* ── Selector ── */}
+        <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm space-y-4">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pilih Surah</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-3">
+              <select
+                disabled={step === 'read' && isRecording}
+                value={surahId}
+                onChange={e => { const v = Number(e.target.value); setSurahId(v); reloadWords(v, ayahStart, ayahEnd) }}
+                className="w-full p-3 bg-emerald-50 text-emerald-900 font-bold rounded-2xl text-sm border-none outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer"
+              >
+                {Array.from({ length: 114 }, (_, i) => i + 1).map(n => {
+                  const s = getSurah(n)
+                  return <option key={n} value={n}>{n}. {s?.name ?? `Surah ${n}`}</option>
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Ayat Mulai</label>
+              <input
+                type="number" min={1} max={ayahEnd} value={ayahStart}
+                disabled={step === 'read' && isRecording}
+                onChange={e => { const v = Math.max(1, Number(e.target.value)); setAyahStart(v); reloadWords(surahId, v, Math.max(v, ayahEnd)) }}
+                className="w-full p-3 bg-gray-50 rounded-2xl text-sm font-bold text-emerald-900 border-none outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Ayat Akhir</label>
+              <input
+                type="number" min={ayahStart} value={ayahEnd}
+                disabled={step === 'read' && isRecording}
+                onChange={e => { const v = Math.max(ayahStart, Number(e.target.value)); setAyahEnd(v); reloadWords(surahId, ayahStart, v) }}
+                className="w-full p-3 bg-gray-50 rounded-2xl text-sm font-bold text-emerald-900 border-none outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+            <div className="flex items-end">
+              <div className="w-full p-3 bg-emerald-50 rounded-2xl text-center">
+                <p className="text-[9px] font-black text-emerald-600 uppercase">Kata</p>
+                <p className="text-xl font-black text-emerald-900">{totalCount}</p>
               </div>
+            </div>
+          </div>
+        </div>
 
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
-                <Volume2 size={14} className="text-blue-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-blue-700 dark:text-blue-400">
-                  Dengarkan pengajaran minimal sekali sebelum membaca. Perhatikan makhraj dan tajwid.
+        {/* ── STEP 1: Dengarkan ── */}
+        {step === 'listen' && (
+          <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-md space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center mx-auto">
+                <Volume2 size={28} className="text-blue-500" />
+              </div>
+              <h3 className="font-black text-gray-800">Dengarkan Dulu</h3>
+              <p className="text-sm text-gray-400">
+                Dengarkan bacaan Mishary Rashid Alafasy sebelum mulai membaca
+              </p>
+            </div>
+
+            <button
+              onClick={playAudio}
+              className={`w-full flex items-center justify-center gap-3 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all active:scale-95 ${
+                isPlaying
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
+              }`}
+            >
+              {isPlaying ? <><Pause size={18} /> Pause</> : <><Play size={18} /> Putar Audio</>}
+            </button>
+
+            <button
+              onClick={() => setStep('read')}
+              className={`w-full py-4 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all border-2 ${
+                hasListened
+                  ? 'border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+                  : 'border-gray-200 text-gray-300 cursor-not-allowed'
+              }`}
+              disabled={!hasListened}
+            >
+              {hasListened ? '✓ Lanjut Baca' : 'Dengarkan Dulu'}
+            </button>
+
+            <button
+              onClick={() => { setHasListened(true); setStep('read') }}
+              className="w-full text-xs text-gray-300 hover:text-gray-500 font-bold py-2 transition-colors"
+            >
+              Lewati →
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP 2 & 3: Baca + Done ── */}
+        {(step === 'read' || step === 'done') && (
+          <>
+            {/* Mushaf */}
+            <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-md relative">
+              <div className="text-center mb-6">
+                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                  Surah {surah?.name} · Ayat {ayahStart}–{ayahEnd}
                 </p>
               </div>
 
-              <Button onClick={goToRead} disabled={!hasListened} className="w-full">
-                Lanjut Baca
-              </Button>
-            </div>
-          )}
-
-          {/* Step 2: Baca */}
-          {(step === 'read' || step === 'done') && (
-            <div className="space-y-3">
-              <QuranWordDisplay
-                words={words}
-                states={wordStates}
-                currentIndex={currentIndex}
-                latin={latinAll}
-              />
-
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Bacaan kamu</p>
-                <div
-                  className="min-h-[40px] p-3 rounded-lg bg-muted/50 text-right"
-                  dir="rtl"
-                  style={{ fontFamily: "'Scheherazade New', serif", fontSize: '18px' }}
-                >
-                  {transcript || <span className="text-muted-foreground/50 text-sm">—</span>}
+              {isRecording && (
+                <div className="absolute top-5 right-6 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">Live</span>
                 </div>
-              </div>
-
-              {errorMessage && (
-                <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
               )}
 
-              {currentIndex > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                dir="rtl"
+                className="flex flex-wrap gap-x-3 gap-y-4 justify-center"
+                style={{ fontFamily: "'Scheherazade New', 'Amiri', serif" }}
+              >
+                {words.map((word, i) => {
+                  const state = wordStates[i] ?? 'idle'
+                  const isCurrent = i === currentIndex && isRecording
+                  return (
+                    <span
+                      key={i}
+                      className={`
+                        text-2xl px-2 py-1 rounded-xl transition-all duration-300
+                        ${isCurrent ? 'text-blue-600 bg-blue-50 scale-110' : ''}
+                        ${state === 'correct' && !isCurrent ? 'text-emerald-600 bg-emerald-50' : ''}
+                        ${state === 'wrong' ? 'text-red-500 bg-red-50 line-through decoration-red-400' : ''}
+                        ${state === 'idle' && !isCurrent ? 'text-gray-700' : ''}
+                      `}
+                    >
+                      {word.arabic}
+                    </span>
+                  )
+                })}
+              </div>
+
+              {(isRecording || step === 'done') && (
+                <div className="mt-6">
+                  <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                    <span>{correctCount} benar</span>
+                    <span>{currentIndex}/{totalCount} kata</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${(currentIndex / words.length) * 100}%` }}
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      style={{ width: `${totalCount > 0 ? (correctCount / totalCount) * 100 : 0}%` }}
                     />
                   </div>
-                  <span className="text-xs text-muted-foreground">{currentIndex}/{words.length}</span>
                 </div>
               )}
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={toggleRecording}
-                  disabled={step === 'done'}
-                  className="flex-1 gap-2"
-                  variant={isRecording ? 'destructive' : 'default'}
-                >
-                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-                  {isRecording ? 'Berhenti' : 'Mulai Baca'}
-                </Button>
-                <Button onClick={resetAll} variant="outline" size="icon">
-                  <RotateCcw size={16} />
-                </Button>
-              </div>
-
-              {isSaving && <p className="text-xs text-muted-foreground text-center">Menyimpan sesi...</p>}
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {step === 'done' && (
-        <SessionReview
-          totalWords={words.length}
-          correctWords={correctCount}
-          mistakes={mistakes}
-          onRetry={resetAll}
-        />
-      )}
+            {/* Live transcript */}
+            {(isRecording || liveTranscript) && (
+              <div className="bg-emerald-950 rounded-[28px] p-6">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-3">Yang AI Dengar</p>
+                <p
+                  dir="rtl"
+                  className="text-xl text-emerald-300 leading-relaxed min-h-[32px]"
+                  style={{ fontFamily: "'Scheherazade New', 'Amiri', serif" }}
+                >
+                  {liveTranscript || '...'}
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            {errorMessage && (
+              <div className="flex items-start gap-3 p-4 bg-red-50 rounded-[24px] border border-red-100">
+                <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-red-700 font-medium">{errorMessage}</p>
+              </div>
+            )}
+
+            {/* Tombol rekam */}
+            <div className="flex gap-3">
+              {step === 'read' && (
+                <button
+                  onClick={toggleRecording}
+                  className={`
+                    flex-1 flex items-center justify-center gap-3 py-5 rounded-[28px] font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg
+                    ${isRecording
+                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-200'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'}
+                  `}
+                >
+                  {isRecording ? <><MicOff size={18} /> Stop & Nilai</> : <><Mic size={18} /> Mulai Baca</>}
+                </button>
+              )}
+
+              <button
+                onClick={resetAll}
+                disabled={isRecording}
+                className="p-5 bg-white border border-gray-200 text-gray-500 rounded-[28px] hover:bg-gray-50 transition-all active:scale-95"
+              >
+                <RotateCcw size={18} />
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── STEP 3: Hasil akurasi kata ── */}
+        {/* FIX 4: pakai `step === 'done'` bukan `status === 'done'` */}
+        {step === 'done' && accuracy !== null && (
+          <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-md space-y-6">
+            <div className="text-center">
+              <div className={`text-6xl font-black ${accuracy >= 80 ? 'text-emerald-500' : accuracy >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>
+                {accuracy}%
+              </div>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-widest mt-1">
+                {accuracy >= 80 ? '🌟 Bacaan Sangat Baik!' : accuracy >= 50 ? '💪 Terus Berlatih' : '📖 Perlu Lebih Sering Diulang'}
+              </p>
+              {isSaving && <p className="text-xs text-gray-300 mt-2">Menyimpan sesi...</p>}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-emerald-50 rounded-[20px] p-4">
+                <p className="text-2xl font-black text-emerald-600">{correctCount}</p>
+                <p className="text-[9px] font-black text-emerald-400 uppercase">Benar</p>
+              </div>
+              <div className="bg-red-50 rounded-[20px] p-4">
+                <p className="text-2xl font-black text-red-500">{mistakes.length}</p>
+                <p className="text-[9px] font-black text-red-400 uppercase">Salah</p>
+              </div>
+              <div className="bg-blue-50 rounded-[20px] p-4">
+                <p className="text-2xl font-black text-blue-600">{totalCount}</p>
+                <p className="text-[9px] font-black text-blue-400 uppercase">Total</p>
+              </div>
+            </div>
+
+            {mistakes.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Kata yang Perlu Diperbaiki</p>
+                <div className="space-y-2">
+                  {mistakes.slice(0, 5).map((m, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-red-50 rounded-[16px]">
+                      <span dir="rtl" className="text-lg text-red-600 font-semibold" style={{ fontFamily: "'Scheherazade New', serif" }}>
+                        {m.wordArabic}
+                      </span>
+                      <span className="text-[9px] font-black text-red-400 uppercase">Ayat {m.ayahNumber}</span>
+                    </div>
+                  ))}
+                  {mistakes.length > 5 && (
+                    <p className="text-xs text-gray-400 text-center">+{mistakes.length - 5} kata lainnya</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Feedback Tajwid dari Gemini ── */}
+            <TajwidFeedbackCard
+              feedback={feedback}
+              isLoading={feedbackLoading}
+              onRetry={retry}
+              accentColor="emerald"
+            />
+
+            <button
+              onClick={resetAll}
+              className="w-full py-4 rounded-[24px] bg-emerald-600 text-white font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-95"
+            >
+              Ulangi Latihan
+            </button>
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }

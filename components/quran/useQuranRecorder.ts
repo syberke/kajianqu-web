@@ -1,4 +1,6 @@
 // components/quran/useQuranRecorder.ts
+// Versi final: realtime chunk ke Groq + expose finalAudioBlob untuk Gemini feedback
+
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
@@ -7,22 +9,28 @@ import { supabase } from '@/lib/supabase'
 interface RecorderOptions {
   onTranscript: (text: string, isFinal: boolean) => void
   onError: (error: string) => void
+  // Dipanggil saat rekam selesai, dengan full audio blob untuk analisis tajwid
+  onFinalAudio?: (blob: Blob) => void
 }
 
-export function useQuranRecorder({ onTranscript, onError }: RecorderOptions) {
+export function useQuranRecorder({ onTranscript, onError, onFinalAudio }: RecorderOptions) {
   const [isRecording, setIsRecording] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const allChunksRef = useRef<Blob[]>([]) // simpan semua untuk final blob
+  const isTranscribingRef = useRef(false)
+  const mimeTypeRef = useRef('audio/webm')
 
-  const transcribe = useCallback(
-    async (blob: Blob) => {
-      if (blob.size < 500) return
-
-      console.log('Sending audio blob:', blob.size, 'bytes', blob.type)
+  const transcribeBlob = useCallback(
+    async (blob: Blob, isFinal: boolean) => {
+      if (blob.size < 3000) return
+      if (isTranscribingRef.current && !isFinal) return
+      isTranscribingRef.current = true
 
       const formData = new FormData()
-      formData.append('audio', blob, 'recording.webm')
+      formData.append('audio', blob, 'chunk.webm')
 
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -41,16 +49,18 @@ export function useQuranRecorder({ onTranscript, onError }: RecorderOptions) {
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-          onError(err.error || 'Transkripsi gagal')
+          if (isFinal) onError(err.error || 'Transkripsi gagal')
           return
         }
 
         const data = await res.json()
         if (data.text?.trim()) {
-          onTranscript(data.text.trim(), true)
+          onTranscript(data.text.trim(), isFinal)
         }
       } catch {
-        onError('Koneksi gagal saat transkripsi')
+        if (isFinal) onError('Koneksi gagal saat transkripsi')
+      } finally {
+        isTranscribingRef.current = false
       }
     },
     [onTranscript, onError]
@@ -61,28 +71,55 @@ export function useQuranRecorder({ onTranscript, onError }: RecorderOptions) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
       chunksRef.current = []
+      allChunksRef.current = []
 
-      // Gunakan audio/webm tanpa codecs suffix
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
         ? 'audio/webm'
         : 'audio/mp4'
 
+      mimeTypeRef.current = mimeType
       const mediaRecorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
+          allChunksRef.current.push(e.data) // akumulasi semua
+        }
       }
 
-      // Kumpulkan semua chunks — kirim saat stop
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType })
-        chunksRef.current = []
-        await transcribe(blob)
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+
+        // Final transkripsi
+        if (chunksRef.current.length > 0) {
+          const finalBlob = new Blob(chunksRef.current, { type: mimeType })
+          chunksRef.current = []
+          await transcribeBlob(finalBlob, true)
+        }
+
+        // Kirim full audio blob ke parent untuk analisis tajwid Gemini
+        if (onFinalAudio && allChunksRef.current.length > 0) {
+          const fullBlob = new Blob(allChunksRef.current, { type: mimeType })
+          onFinalAudio(fullBlob)
+        }
       }
 
-      mediaRecorder.start()
+      mediaRecorder.start(500)
       setIsRecording(true)
+
+      // Kirim chunk tiap 3 detik untuk realtime transkripsi
+      intervalRef.current = setInterval(() => {
+        if (chunksRef.current.length === 0) return
+        const blob = new Blob([...chunksRef.current], { type: mimeType })
+        transcribeBlob(blob, false)
+      }, 3000)
+
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('NotAllowedError') || msg.includes('Permission denied')) {
@@ -93,13 +130,17 @@ export function useQuranRecorder({ onTranscript, onError }: RecorderOptions) {
         onError(`Gagal akses mikrofon: ${msg}`)
       }
     }
-  }, [transcribe, onError])
+  }, [transcribeBlob, onError, onFinalAudio])
 
   const stopRecording = useCallback(async () => {
     setIsRecording(false)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
     const recorder = mediaRecorderRef.current
     if (recorder && recorder.state !== 'inactive') {
-      recorder.stop() // ini trigger onstop → transcribe otomatis
+      recorder.stop()
     }
     streamRef.current?.getTracks().forEach((t) => t.stop())
   }, [])
