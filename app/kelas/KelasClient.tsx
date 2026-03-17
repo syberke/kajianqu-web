@@ -1,0 +1,336 @@
+'use client'
+
+// app/kelas/KelasClient.tsx
+// Sesuai screenshot:
+// - Hero hijau dengan judul "Mari Ikuti Kelas Unggulan Kami"
+// - 3 tab pill: Live Stream | Kajian Tematik | Kelas Private
+// - Grid 3 kolom card dengan gambar, nama ustadz, judul, tipe, deskripsi, "Ikuti Kelas"
+// - Kelas Private punya layout berbeda: deskripsi + mentor carousel + keunggulan + CTA app
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Share2 } from 'lucide-react'
+
+// Assets
+const imgLogo      = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
+const imgKelas     = "https://www.figma.com/api/mcp/asset/7457a6f1-a3f4-4def-8df5-5b4f83e022ee"
+const imgPrivate   = "https://www.figma.com/api/mcp/asset/7457a6f1-a3f4-4def-8df5-5b4f83e022ee"
+const imgGooglePlay= "https://www.figma.com/api/mcp/asset/f43088f3-2402-424b-8ba7-a28d985f7c15"
+const imgAppStore  = "https://www.figma.com/api/mcp/asset/c3279e4f-e37a-410b-b3b8-a0916b096877"
+const imgWA        = "https://www.figma.com/api/mcp/asset/76804cd5-fffd-4270-98f8-a1df1731d6ec"
+const imgIG        = "https://www.figma.com/api/mcp/asset/312a2fb9-7fe3-4a0f-bcf7-f58d23ebe756"
+
+type Tab = 'live' | 'tematik' | 'private'
+
+interface Props {
+  liveData:    any[]
+  tematikData: any[]
+  privateData: {
+    description: string
+    mentors: { nama: string; bidang: string }[]
+    keunggulan: { icon: string; title: string; desc: string }[]
+  }
+}
+
+// ── Helper: extract YouTube embed URL ───────────────────────────────
+function getYouTubeThumb(url: string): string {
+  if (!url) return imgKelas
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (match) return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`
+  return imgKelas
+}
+
+// ── Kelas Card ───────────────────────────────────────────────────────
+function KelasCard({ item, type }: { item: any; type: 'live' | 'tematik' }) {
+  const thumb = getYouTubeThumb(item.youtube_url || item.stream_url || '')
+  const ustadz = item.asatidz?.nama || item.ustadz || 'Ustadz'
+  const label  = type === 'live' ? 'Live Stream' : 'Podcast'
+  const href   = type === 'live'
+    ? `/kelas/live/${item.id}`
+    : `/kelas/tematik/${item.id}`
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow group">
+      {/* Thumbnail */}
+      <div className="relative h-[180px] overflow-hidden rounded-t-2xl">
+        <img
+          src={thumb}
+          alt={item.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={(e) => { (e.target as HTMLImageElement).src = imgKelas }}
+        />
+        {/* Ustadz badge */}
+        <div className="absolute bottom-3 left-3">
+          <span className="bg-[#1a7a53] text-white text-[11px] font-semibold px-3 py-1 rounded-full">
+            {ustadz}
+          </span>
+        </div>
+        {/* Live indicator */}
+        {type === 'live' && item.status === 'live' && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+            LIVE
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-2">
+        <h3 className="font-bold text-gray-900 text-[15px] leading-snug line-clamp-2">
+          {item.title || 'Hukumnya Tahlilan'}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 bg-[#1a7a53] rounded-full" />
+          <span className="text-gray-500 text-xs">{label}</span>
+        </div>
+        <p className="text-gray-500 text-sm leading-relaxed line-clamp-2">
+          {item.description || 'Membahas Seputar Tahlilan, dan pertan...'}
+        </p>
+        <Link
+          href={href}
+          className="inline-flex items-center gap-1 text-[#1a7a53] font-semibold text-sm hover:gap-2 transition-all"
+        >
+          Ikuti Kelas <span className="text-base">›</span>
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+export default function KelasClient({ liveData, tematikData, privateData }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('live')
+  const [mentorPage, setMentorPage] = useState(0)
+
+  const tabs = [
+    { id: 'live'    as Tab, label: 'Live Stream'    },
+    { id: 'tematik' as Tab, label: 'Kajian Tematik' },
+    { id: 'private' as Tab, label: 'Kelas Private'  },
+  ]
+
+  // Dummy data kalau DB kosong
+  const dummyLive = Array(3).fill({
+    id: 'dummy', title: 'Hukumnya Tahlilan', description: 'Membahas Seputar Tahlilan, dan pertan...', status: 'upcoming', asatidz: { nama: 'Ust. Adi Hidayat' }
+  })
+  const dummyTematik = Array(3).fill({
+    id: 'dummy', title: 'Hukumnya Tahlilan', description: 'Membahas Seputar Tahlilan, dan pertan...', asatidz: { nama: 'Ust. Adi Hidayat' }
+  })
+
+  const displayLive    = liveData.length    > 0 ? liveData    : dummyLive
+  const displayTematik = tematikData.length > 0 ? tematikData : dummyTematik
+
+  return (
+    <div className="bg-white min-h-screen font-['Poppins',sans-serif]">
+
+      {/* ── NAVBAR ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1a7a53] shadow-sm">
+        <div className="max-w-[1200px] mx-auto px-6 h-[70px] flex items-center justify-between">
+          <Link href="/welcome">
+            <img src={imgLogo} alt="KajianQu" className="h-10 object-contain" />
+          </Link>
+          <div className="hidden md:flex items-center gap-8 text-white text-sm font-medium">
+            <Link href="/welcome" className="hover:text-[#d3ad0f] transition-colors">Beranda</Link>
+            <Link href="/welcome" className="hover:text-[#d3ad0f] transition-colors">Fitur</Link>
+            <Link href="/kelas"   className="text-[#d3ad0f]">Kelas</Link>
+            <Link href="/welcome" className="hover:text-[#d3ad0f] transition-colors">Donasi</Link>
+          </div>
+          <Link href="/login" className="bg-white text-[#1a7a53] font-semibold px-5 py-2 rounded-xl text-sm hover:bg-[#d3ad0f] hover:text-white transition-all">
+            Masuk
+          </Link>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <div className="relative bg-gradient-to-b from-[#1a7a53] to-[#0d5c3a] pt-[100px] pb-16 px-6 text-center overflow-hidden">
+        {/* Decorative crescent */}
+        <div className="absolute left-8 top-10 opacity-20 text-white text-[180px] font-serif leading-none select-none">☽</div>
+        <div className="absolute right-8 bottom-0 opacity-10">
+          <div className="w-40 h-40 border-4 border-white/30 rotate-12 rounded-xl" />
+        </div>
+
+        <div className="relative z-10 max-w-2xl mx-auto space-y-3">
+          <p className="text-white/70 text-sm font-medium tracking-widest uppercase">Program Kelas</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+            Mari Ikuti Kelas Unggulan Kami
+          </h1>
+          <p className="text-white/70 text-base leading-relaxed">
+            Berbagai kelas mulai dari live hingga rekaman kajian dari ustad yang bisa langsung di akses secara gratis.
+          </p>
+        </div>
+      </div>
+
+      {/* ── TABS ── */}
+      <div className="sticky top-[70px] z-40 bg-white border-b border-gray-100 px-6 py-4">
+        <div className="max-w-[500px] mx-auto">
+          <div className="flex items-center border border-gray-200 rounded-full p-1 bg-gray-50">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-[#1a7a53] text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── CONTENT ── */}
+      <div className="max-w-[1200px] mx-auto px-6 py-12">
+
+        {/* ── TAB: Live Stream ── */}
+        {activeTab === 'live' && (
+          <div className="space-y-8">
+            <h2 className="text-2xl font-bold text-gray-900">Live Stream</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayLive.map((item: any, i: number) => (
+                <KelasCard key={item.id + i} item={item} type="live" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: Kajian Tematik ── */}
+        {activeTab === 'tematik' && (
+          <div className="space-y-8">
+            <h2 className="text-2xl font-bold text-gray-900">Podcast</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayTematik.map((item: any, i: number) => (
+                <KelasCard key={item.id + i} item={item} type="tematik" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: Kelas Private ── */}
+        {activeTab === 'private' && (
+          <div className="space-y-16">
+
+            {/* Deskripsi Kelas Private */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div className="rounded-2xl overflow-hidden h-[250px] shadow-lg">
+                <img src={imgPrivate} alt="Kelas Private" className="w-full h-full object-cover" />
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-bold text-[#1a7a53]">Kelas Private</h2>
+                <p className="text-gray-600 leading-relaxed">
+                  {privateData.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Mentoring Ustadz */}
+            <div className="space-y-8">
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-bold text-gray-900">Mentoring Ustadz</h2>
+                <p className="text-gray-500">Ustadz-ustadz ini yang akan mengisi materi untuk di kelas private</p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {privateData.mentors.map((mentor, i) => (
+                  <div key={i} className="relative rounded-2xl overflow-hidden h-[220px] group cursor-pointer shadow-md">
+                    <img src={imgKelas} alt={mentor.nama} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3">
+                      <p className="text-white font-semibold text-sm">{mentor.nama}</p>
+                      <p className="text-white/70 text-xs">{mentor.bidang}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dots indicator */}
+              <div className="flex justify-center gap-2">
+                {[0, 1, 2].map((i) => (
+                  <button key={i} onClick={() => setMentorPage(i)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${mentorPage === i ? 'bg-[#1a7a53] w-6' : 'bg-gray-300'}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Keunggulan */}
+            <div className="space-y-8">
+              <h2 className="text-3xl font-bold text-center text-gray-900">
+                Apa saja keunggulan <span className="text-[#1a7a53]">kelas Private?</span>
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {privateData.keunggulan.map((k, i) => (
+                  <div key={i} className="border border-gray-200 rounded-2xl p-5 text-center space-y-3 hover:shadow-md transition-shadow">
+                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto text-2xl">
+                      {k.icon}
+                    </div>
+                    <p className="font-bold text-gray-800">{k.title}</p>
+                    <p className="text-gray-500 text-sm leading-relaxed">{k.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA Lanjutkan di Aplikasi */}
+            <div className="relative bg-gradient-to-b from-[#1a7a53] to-[#0d5c3a] rounded-3xl py-16 px-8 text-center overflow-hidden">
+              {/* Dekorasi */}
+              <div className="absolute left-6 top-6 opacity-20">
+                <div className="w-24 h-24 border-4 border-[#d3ad0f] rotate-12 rounded-xl" />
+              </div>
+              <div className="absolute right-6 bottom-6 opacity-20">
+                <div className="w-24 h-24 border-4 border-[#d3ad0f] -rotate-12 rounded-xl" />
+              </div>
+
+              <div className="relative z-10 space-y-4 max-w-2xl mx-auto">
+                <h2 className="text-3xl font-bold text-white">Lanjutkan Di Aplikasi</h2>
+                <p className="text-white/70 leading-relaxed">
+                  Belajar lebih fokus dan personal melalui Kelas Privat kami. Dapatkan bimbingan langsung dari pengajar berpengalaman, materi terarah sesuai kebutuhan, serta jadwal yang fleksibel.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+                  <img src={imgGooglePlay} alt="Google Play" className="h-14 object-contain cursor-pointer hover:opacity-80 transition-opacity" />
+                  <img src={imgAppStore}   alt="App Store"   className="h-14 object-contain cursor-pointer hover:opacity-80 transition-opacity rounded-xl" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── FOOTER ── */}
+      <footer className="border-t-2 border-[#1a7a53] py-12 px-6 mt-16">
+        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between gap-10">
+          <div className="max-w-xs space-y-3">
+            <img src={imgLogo} alt="KajianQu" className="h-12 object-contain" />
+            <p className="text-gray-500 text-sm leading-relaxed">
+              QuranKu adalah platform islami untuk membaca Al-Qur'an, doa, dan belajar Islam dengan mudah dan nyaman.
+            </p>
+            <div className="flex gap-3">
+              <img src={imgWA} alt="WA" className="w-8 h-8 object-contain cursor-pointer hover:opacity-70 transition-opacity" />
+              <img src={imgIG} alt="IG" className="w-8 h-8 object-contain cursor-pointer hover:opacity-70 transition-opacity" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-12">
+            <div className="space-y-2">
+              <p className="font-bold text-gray-800">Tentang Kami</p>
+              {['Sekilas QuranKu', 'Visi Misi', 'Ustadz'].map(l => (
+                <p key={l} className="text-gray-500 text-sm hover:text-[#1a7a53] cursor-pointer transition-colors">{l}</p>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="font-bold text-gray-800">Kelas</p>
+              {['Fiqih', 'Akhlak', 'Tahfidz', 'Akidah', 'Tafsir'].map(l => (
+                <p key={l} className="text-gray-500 text-sm hover:text-[#1a7a53] cursor-pointer transition-colors">{l}</p>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="font-bold text-gray-800">Waktu Sholat</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  )
+}
