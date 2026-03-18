@@ -3,7 +3,7 @@
 // Navbar & footer dari (public)/layout.tsx — tidak perlu import di sini
 
 import { createClient } from '@/supabase/server'
-import MateriClient from './KeilmuanClient'
+import MateriClient from './MateriClient'
 
 export default async function MateriPage() {
   const supabase = await createClient()
