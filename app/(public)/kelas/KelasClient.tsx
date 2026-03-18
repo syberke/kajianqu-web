@@ -1,11 +1,5 @@
 'use client'
 
-// app/(public)/kelas/KelasClient.tsx
-// PERHATIAN: Navbar dan footer DIHAPUS dari sini
-// Navbar sudah dihandle oleh app/(public)/layout.tsx
-// Footer sudah dihandle oleh app/(public)/layout.tsx
-//
-// File ini hanya berisi KONTEN halaman kelas
 
 import { useState } from 'react'
 import Link from 'next/link'

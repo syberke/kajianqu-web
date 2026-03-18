@@ -1,8 +1,4 @@
-// app/kelas/[type]/[id]/page.tsx
-// Halaman detail kelas — sesuai screenshot 4 (Live Stream detail) dan 5 (Kajian Tematik detail)
-// type: 'live' | 'tematik'
-// Breadcrumb, judul, video player, tombol Tonton + Bagikan
-// "Temukan Kajian Lainnya" — grid 3x2 card
+
 
 import { createClient } from '@/supabase/server'
 import { notFound } from 'next/navigation'

@@ -1,7 +1,4 @@
-// app/(public)/quran/[mode]/[surahId]/page.tsx
-// Halaman setoran Quran — Tahfidz atau Tahsin
-// mode: 'tahfidz' | 'tahsin'
-// surahId: nomor surat 1-114
+
 
 import { notFound } from 'next/navigation'
 import { QURAN_SURAHS } from '@/lib/quran-data'
@@ -21,7 +18,6 @@ export default async function QuranSetoranPage({ params, searchParams }: Props) 
   const id    = parseInt(surahId)
   const surah = QURAN_SURAHS[id]
 
-  // Kalau surah tidak ada di data lokal, tetap render dengan info minimal
   const surahInfo = surah
     ? { id, name: surah.name, arabic: surah.nameArabic, totalAyat: surah.totalAyat, type: 'Makkiyah' }
     : { id, name: `Surah ${id}`, arabic: '', totalAyat: 7, type: 'Makkiyah' }

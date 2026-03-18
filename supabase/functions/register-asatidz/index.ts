@@ -33,7 +33,6 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // 3. Buat Akun Asatidz
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,

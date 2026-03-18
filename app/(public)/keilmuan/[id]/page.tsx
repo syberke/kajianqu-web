@@ -1,6 +1,3 @@
-// app/(public)/materi/[id]/page.tsx
-// Halaman detail materi keilmuan — sesuai screenshot 2 & 3
-// Navbar & footer dari (public)/layout.tsx
 
 import { createClient } from '@/supabase/server'
 import MateriDetailClient from './MateriDeltailClient'

@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req: Request) => {
-  // 1. Handle CORS
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -16,7 +16,6 @@ serve(async (req: Request) => {
       })
     }
 
-    // 2. Ambil token otorisasi dari header (Dari Admin yang lagi login)
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('Akses ditolak: Token tidak ditemukan')
@@ -26,7 +25,7 @@ serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // 3. Validasi siapa yang request ini
+
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     })
@@ -35,18 +34,15 @@ serve(async (req: Request) => {
     
     if (userError || !user) throw new Error('Akses ditolak: User tidak valid')
     
-    // 🔥 CEK ROLE: Pastikan cuma ADMIN yang bisa jalankan fungsi ini
     if (user.user_metadata?.role !== 'admin') {
       throw new Error('Terlarang: Hanya Admin yang bisa menyetujui Asatidz')
     }
 
-    // 4. Ambil ID asatidz yang mau di-approve dari body request
     const body = await req.json()
     const { target_user_id } = body
 
     if (!target_user_id) throw new Error('ID Asatidz tidak ditemukan')
 
-    // 5. Eksekusi Update pakai Admin Key (Service Role)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     
     const { error: updateError } = await supabaseAdmin
@@ -56,7 +52,6 @@ serve(async (req: Request) => {
 
     if (updateError) throw updateError
 
-    // 6. Berhasil!
     return new Response(
       JSON.stringify({ success: true, message: 'Asatidz berhasil diverifikasi' }), 
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

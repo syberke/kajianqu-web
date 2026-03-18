@@ -1,15 +1,5 @@
 'use client'
 
-// app/(public)/materi/[id]/MateriDetailClient.tsx
-// Sesuai screenshot 2 (kuis collapsed) dan 3 (kuis expanded):
-// - Background hijau muda
-// - Breadcrumb: Akhlak › Mudah
-// - Judul besar
-// - Deskripsi panjang
-// - Video YouTube (thumbnail + play button merah)
-// - Tombol "Tonton Sekarang" + "Bagikan"
-// - Card "Kuis Seputar Topik" — bisa di-expand (chevron kanan)
-//   Expand: soal pilihan ganda dengan divider antar soal
 
 import { useState } from 'react'
 import Link from 'next/link'

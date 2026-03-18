@@ -1,10 +1,5 @@
 'use client'
 
-// app/welcome/WelcomeClient.tsx
-// Satu halaman untuk belum login dan sudah login
-// Perbedaannya HANYA di navbar:
-//   - Belum login → tombol "Masuk"
-//   - Sudah login  → avatar + nama + dropdown (Profil, Dashboard, Keluar)
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'

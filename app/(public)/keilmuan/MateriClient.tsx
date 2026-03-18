@@ -1,11 +1,5 @@
 'use client'
 
-// app/(public)/materi/MateriClient.tsx
-// Sesuai screenshot 1:
-// - Hero hijau: "Program Keilmuan", "Tambah Ilmu dari KajianQu"
-// - Search bar + tombol Cari
-// - Sidebar kiri: filter Topik (checkbox)
-// - Grid 3 kolom card: thumbnail, badge level, judul, kategori, kitab, tombol "Tonton Sekarang"
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
@@ -34,7 +28,7 @@ function MateriCard({ item }: { item: any }) {
   const kitab    = item.summary || '-'
 
   return (
-    <Link href={`/materi/${item.id}`} className="block group">
+    <Link href={`/keilmuan/${item.id}`} className="block group">
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
         {/* Thumbnail + badge level */}
         <div className="relative h-[180px] overflow-hidden">
@@ -43,28 +37,27 @@ function MateriCard({ item }: { item: any }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => { (e.target as HTMLImageElement).src = imgFallback }}
           />
-          {/* Badge level di kanan atas */}
+     
           <span className={`absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full ${LEVEL_STYLE[level] || LEVEL_STYLE.Mudah}`}>
             {level}
           </span>
         </div>
 
-        {/* Konten card */}
         <div className="p-4 space-y-2">
           <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2 group-hover:text-[#1a7a53] transition-colors">
             {item.title}
           </h3>
 
-          {/* Kategori */}
+    
           <p className="text-gray-500 text-sm">{kategori}</p>
 
-          {/* Kitab — dengan icon buku */}
+        
           <div className="flex items-center gap-1.5 text-[#1a7a53] text-sm">
             <BookOpen size={13} />
             <span className="line-clamp-1">{kitab}</span>
           </div>
 
-          {/* Tombol */}
+        
           <button className="w-full mt-2 bg-[#1a7a53]/10 hover:bg-[#1a7a53] text-[#1a7a53] hover:text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all">
             Tonton Sekarang <span className="text-base">›</span>
           </button>
@@ -108,12 +101,12 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
   const handleCari = () => setSearch(searchInput)
 
   return (
-    // pt-[72px] karena navbar fixed
+    
     <div className="min-h-screen bg-white pt-[72px]">
 
-      {/* ── HERO ── */}
+  
       <div className="relative bg-gradient-to-b from-[#1a7a53] to-[#0d5c3a] pt-16 pb-24 px-6 text-center overflow-hidden">
-        {/* Dekorasi buku */}
+   
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 opacity-10">
           <div className="w-64 h-32 border-4 border-white rounded-t-full" />
         </div>
@@ -129,7 +122,6 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
         </div>
       </div>
 
-      {/* ── SEARCH BAR — overlap hero ── */}
       <div className="max-w-[900px] mx-auto px-6 -mt-7 mb-10 relative z-10">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 flex gap-3">
           <input
@@ -149,17 +141,17 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
         </div>
       </div>
 
-      {/* ── MAIN CONTENT: sidebar + grid ── */}
+      
       <div className="max-w-[1200px] mx-auto px-6 pb-20">
         <div className="flex gap-8 items-start">
 
-          {/* ── SIDEBAR TOPIK ── */}
+          
           <aside className="w-[200px] shrink-0 sticky top-[90px]">
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
               <p className="font-bold text-gray-800 text-base mb-4">Topik</p>
               <div className="space-y-3">
                 {keilmuanList.length === 0 ? (
-                  // Dummy topik kalau DB kosong
+            
                   ['Akhlak', 'Fiqih', 'Tafsir', 'B. Arrab'].map(t => (
                     <label key={t} className="flex items-center gap-3 cursor-pointer group">
                       <div className="w-4 h-4 border-2 border-gray-300 rounded group-hover:border-[#1a7a53] transition-colors flex-shrink-0" />
@@ -196,7 +188,7 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
                 )}
               </div>
 
-              {/* Reset filter */}
+            
               {selectedCat.length > 0 && (
                 <button
                   onClick={() => setSelectedCat([])}
@@ -208,10 +200,10 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
             </div>
           </aside>
 
-          {/* ── GRID MATERI ── */}
+         
           <div className="flex-1 min-w-0">
             {filtered.length === 0 ? (
-              // Empty state — tampilkan dummy sesuai screenshot
+            
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {DUMMY_MATERIALS.map((item, i) => (
                   <MateriCard key={i} item={item} />
@@ -225,7 +217,7 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
               </div>
             )}
 
-            {/* Info jumlah hasil */}
+        
             {search && filtered.length > 0 && (
               <p className="text-center text-gray-400 text-sm mt-8">
                 Menampilkan {filtered.length} hasil untuk "<strong>{search}</strong>"
@@ -251,7 +243,7 @@ export default function MateriClient({ initialMaterials, keilmuanList }: Props) 
   )
 }
 
-// ── Dummy data kalau DB masih kosong ─────────────────────────────────
+
 const DUMMY_MATERIALS = [
   { id: 'dummy-1', title: 'Hukumnya Tahlilan', level: 'Mudah',    keilmuan: { nama: 'Fiqih'  }, summary: 'Fiqhul Wadhih',    youtube_url: '' },
   { id: 'dummy-2', title: 'Hukumnya Tahlilan', level: 'Menengah', keilmuan: { nama: 'Fiqih'  }, summary: 'Safinatun Najah', youtube_url: '' },

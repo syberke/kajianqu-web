@@ -94,7 +94,7 @@ export default function PublicNavbar({ userProfile }: Props) {
                 >
                   Sahabat Qur'an
                 </Link>
-                <Link href={isLoggedIn ? '/materi' : '/welcome'}
+                <Link href={isLoggedIn ? '/keilmuan' : '/welcome'}
                   className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors"
                   onClick={() => setFiturOpen(false)}
                 >

@@ -1,7 +1,5 @@
 'use client'
 
-// app/(public)/kelas/[type]/[id]/KelasDetailClient.tsx
-// PERHATIAN: Navbar dan footer DIHAPUS — sudah dihandle (public)/layout.tsx
 
 import { useState } from 'react'
 import Link from 'next/link'

@@ -1,12 +1,6 @@
 'use client'
 
-// app/(public)/quran/QuranClient.tsx
-// Sesuai screenshot 1 & 2:
-// - Hero hijau: "Sahabat Qur'an", "Ngaji Bareng Sahabat Qur'an"
-// - Tab Tahfidz | Tahsin
-// - Filter: Pilih PerJuz (unchecked) | Pilih Persurat (checked/active)
-// - Input: Nama Surat, Nomor Awal Ayat, Nomor Akhir Ayat
-// - Grid 3 kolom: card surat (nama, jenis Makkiyah/Madaniyah, jumlah ayat)
+
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,7 +9,6 @@ import { QURAN_SURAHS } from '@/lib/quran-data'
 type Tab       = 'tahfidz' | 'tahsin'
 type FilterMode = 'juz' | 'surah'
 
-// Build daftar surat dari quran-data
 const SURAH_LIST = Object.values(QURAN_SURAHS).map(s => ({
   id:        s.id,
   name:      s.name,
@@ -23,9 +16,6 @@ const SURAH_LIST = Object.values(QURAN_SURAHS).map(s => ({
   type:      (s as any).type || 'Makkiyah',
   totalAyat: s.totalAyat,
 }))
-
-// Tambah surat-surat dari Quran API untuk tampilan (114 surat)
-// Sementara pakai data dari quran-data yang sudah ada + generate dummy lainnya
 const ALL_SURAHS = Array.from({ length: 114 }, (_, i) => {
   const existing = QURAN_SURAHS[i + 1]
   if (existing) {

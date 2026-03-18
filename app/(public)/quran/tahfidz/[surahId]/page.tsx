@@ -1,7 +1,3 @@
-// app/(public)/quran/[mode]/[surahId]/page.tsx
-// Halaman setoran Quran — Tahfidz atau Tahsin
-// mode: 'tahfidz' | 'tahsin'
-// surahId: nomor surat 1-114
 
 import { notFound } from 'next/navigation'
 import { QURAN_SURAHS } from '@/lib/quran-data'

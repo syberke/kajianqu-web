@@ -48,11 +48,10 @@ const onSubmit = async (e: React.FormEvent) => {
   return (
     <div className="min-h-screen bg-white flex">
 
-      {/* ── KIRI: Form ── */}
       <div className="flex-1 flex items-center justify-center p-8 lg:p-16">
         <div className="w-full max-w-[480px] space-y-8">
 
-          {/* Intro */}
+      
           <div className="space-y-3">
             <h1 className="text-4xl font-['Poppins',sans-serif] font-semibold text-[#0c1421] tracking-tight">
               Selamat Datang 👋
@@ -124,7 +123,6 @@ const onSubmit = async (e: React.FormEvent) => {
             <div className="flex-1 h-px bg-[#d4d7e3]" />
           </div>
 
-          {/* Google */}
           <button
             onClick={onGoogle}
             className="w-full flex items-center justify-center gap-4 bg-[#effffe] border border-[#d4d7e3] rounded-xl py-3 hover:bg-[#e0faf9] transition-colors"
@@ -144,7 +142,7 @@ const onSubmit = async (e: React.FormEvent) => {
         </div>
       </div>
 
-      {/* ── KANAN: Art ── */}
+ 
       <div className="hidden lg:flex flex-1 items-stretch p-8">
         <div className="relative w-full rounded-[24px] overflow-hidden">
           <img src={imgLoginArt} alt="Art" className="absolute inset-0 w-full h-full object-cover" />

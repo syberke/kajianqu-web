@@ -1,6 +1,3 @@
-// app/welcome/page.tsx
-// Server component — cek apakah user sudah login
-// Kirim userProfile ke WelcomeClient, kalau null berarti belum login
 
 import { createClient } from '@/supabase/server'
 import WelcomeClient from './WelcomeClient'
@@ -20,6 +17,5 @@ export default async function WelcomePage() {
     userProfile = profile
   }
 
-  // Kirim ke client — kalau userProfile null = belum login
   return <WelcomeClient userProfile={userProfile} />
 }

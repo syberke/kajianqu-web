@@ -78,7 +78,6 @@ serve(async (req) => {
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim()
     const finalData = JSON.parse(cleanJson)
 
-    // Kembalikan data yang sudah dirapikan ke Next.js
     return new Response(JSON.stringify(finalData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

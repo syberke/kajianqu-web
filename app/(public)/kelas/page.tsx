@@ -1,7 +1,4 @@
-// app/kelas/page.tsx
-// Halaman publik daftar kelas — sesuai screenshot
-// Tab: Live Stream | Kajian Tematik | Kelas Private
-// Data dari Supabase
+
 
 import { createClient } from '@/supabase/server'
 import KelasClient from './KelasClient'

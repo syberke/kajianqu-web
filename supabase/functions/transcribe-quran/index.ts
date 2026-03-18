@@ -1,5 +1,3 @@
-// supabase/functions/transcribe-quran/index.ts
-// Deploy: supabase functions deploy transcribe-quran --no-verify-jwt
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,8 +29,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Groq hanya terima: mp3, mp4, mpeg, mpga, m4a, wav, webm
-    // Paksa mime type ke audio/webm dan nama file .webm
     const audioBuffer = await audioFile.arrayBuffer()
     const cleanBlob = new Blob([audioBuffer], { type: 'audio/webm' })
     const cleanFile = new File([cleanBlob], 'recording.webm', { type: 'audio/webm' })
