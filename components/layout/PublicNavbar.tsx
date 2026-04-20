@@ -27,18 +27,18 @@ interface Props {
 
 export default function PublicNavbar({ userProfile }: Props) {
   const pathname = usePathname()
-  const router   = useRouter()
+  const router = useRouter()
   const isLoggedIn = !!userProfile
 
-  const [scrolled,     setScrolled]     = useState(false)
-  const [fiturOpen,    setFiturOpen]    = useState(false)
-  const [donasiOpen,   setDonasiOpen]   = useState(false)
-  const [profileOpen,  setProfileOpen]  = useState(false)
-  const [mobileOpen,   setMobileOpen]   = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [fiturOpen, setFiturOpen] = useState(false)
+  const [donasiOpen, setDonasiOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
   const firstName = userProfile?.nama?.split(' ')[0] || 'User'
-  const initial   = userProfile?.nama?.charAt(0).toUpperCase() || 'U'
+  const initial = userProfile?.nama?.charAt(0).toUpperCase() || 'U'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -63,17 +63,20 @@ export default function PublicNavbar({ userProfile }: Props) {
   }
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled ? 'bg-[#1a7a53] shadow-lg' : 'bg-[#1a7a53]/90 backdrop-blur-md'
-    }`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#1a7a53] shadow-lg' : 'bg-[#1a7a53]/90 backdrop-blur-md'
+      }`}>
       <div className="max-w-[1378px] mx-auto px-6 h-[72px] flex items-center justify-between">
 
-        {/* ── LOGO ── */}
-        <Link href="/welcome" className="shrink-0">
-          <img src={imgLogo} alt="KajianQu" className="h-11 w-auto object-contain" />
+        {/* ── 1. LOGO ── */}
+        <Link href="/welcome" className="shrink-0 flex items-center">
+          <img
+            src={imgLogo}
+            alt="KajianQu"
+            className="h-12 md:h-14 w-auto object-contain transition-transform hover:scale-105"
+          />
         </Link>
 
-        {/* ── NAV LINKS tengah ── */}
+        {/* ── 2. NAV LINKS TENGAH ── */}
         <div className="hidden md:flex items-center gap-8">
           <Link href="/welcome"
             className={`text-sm font-medium transition-colors ${pathname === '/welcome' ? 'text-[#d3ad0f]' : 'text-white hover:text-[#d3ad0f]'}`}
@@ -115,25 +118,33 @@ export default function PublicNavbar({ userProfile }: Props) {
             <button className="flex items-center gap-1.5 text-sm font-medium text-white hover:text-[#d3ad0f] transition-colors">
               Donasi <ChevronDown size={14} className={`transition-transform ${donasiOpen ? 'rotate-180' : ''}`} />
             </button>
+
             {donasiOpen && (
               <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                {['Infaq Asatidz', 'Sodaqoh', "Wakaf Al-Qur'an", 'Katalog Produk'].map((item) => (
-                  <button key={item}
+                {/* Link sudah disesuaikan dengan slug yang diminta */}
+                {[
+                  { label: "Wakaf Al-Qur'an", href: '/donasi/wakaf-quran' },
+                  { label: 'Sodaqoh Jariyah', href: '/donasi/sodaqoh' },
+                  { label: 'Infaq Asatidz', href: '/donasi/infaq-asatidz' },
+                  { label: 'Katalog Produk', href: '/donasi/katalog-produk' },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
                     className="w-full text-left block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors"
                     onClick={() => setDonasiOpen(false)}
                   >
-                    {item}
-                  </button>
+                    {item.label}
+                  </Link>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </div> 
 
-        {/* ── KANAN: kondisional ── */}
+        {/* ── 3. KANAN: KONDISIONAL ── */}
         <div className="flex items-center gap-3">
           {isLoggedIn ? (
-            // ── Sudah login: avatar + nama + dropdown ──
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
@@ -151,7 +162,6 @@ export default function PublicNavbar({ userProfile }: Props) {
 
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-[14px] shadow-xl border border-gray-100 overflow-hidden z-50">
-                  {/* Info user */}
                   <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                     <p className="font-bold text-gray-800 text-sm">{userProfile?.nama}</p>
                     <p className="text-xs text-gray-400 capitalize mt-0.5">{userProfile?.role}</p>
@@ -179,16 +189,15 @@ export default function PublicNavbar({ userProfile }: Props) {
               )}
             </div>
           ) : (
-            // ── Belum login: tombol Masuk ──
             <Link href="/login"
-              className="bg-white text-[#15441a] font-semibold text-sm px-5 py-2.5 rounded-[12px] hover:bg-[#d3ad0f] hover:text-white transition-all whitespace-nowrap"
+              className="bg-white text-[#15441a] font-semibold text-sm px-5 py-2.5 rounded-[12px] hover:bg-[#d3ad0f] hover:text-white transition-all whitespace-nowrap hidden md:block"
             >
               Masuk
             </Link>
           )}
 
           {/* Mobile hamburger */}
-          <button className="md:hidden text-white p-1.5" onClick={() => setMobileOpen(!mobileOpen)}>
+          <button className="md:hidden text-white p-1.5 ml-2" onClick={() => setMobileOpen(!mobileOpen)}>
             <div className={`w-5 h-0.5 bg-white mb-1 transition-all ${mobileOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
             <div className={`w-5 h-0.5 bg-white mb-1 transition-all ${mobileOpen ? 'opacity-0' : ''}`} />
             <div className={`w-5 h-0.5 bg-white transition-all ${mobileOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
@@ -196,31 +205,43 @@ export default function PublicNavbar({ userProfile }: Props) {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu (Expanded to include Fitur & Donasi) */}
       {mobileOpen && (
-        <div className="md:hidden bg-[#1a7a53] border-t border-white/10 px-6 py-4 space-y-1">
-          {[
-            { label: 'Beranda', href: '/welcome' },
-            { label: 'Kelas',   href: '/kelas' },
-          ].map(link => (
-            <Link key={link.href} href={link.href}
-              className="block py-2.5 text-white text-sm font-medium hover:text-[#d3ad0f] transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {isLoggedIn ? (
-            <button onClick={handleLogout} className="flex items-center gap-2 text-red-300 text-sm py-2.5">
-              <LogOut size={16} /> Keluar
-            </button>
-          ) : (
-            <Link href="/login" className="block py-2.5 text-[#d3ad0f] text-sm font-bold"
-              onClick={() => setMobileOpen(false)}
-            >
-              Masuk →
-            </Link>
-          )}
+        <div className="md:hidden bg-[#1a7a53] border-t border-white/10 px-6 py-4 space-y-2 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-1 pb-2 border-b border-white/10">
+            <p className="text-white/50 text-[11px] font-bold uppercase tracking-wider mb-2">Menu Utama</p>
+            <Link href="/welcome" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Beranda</Link>
+            <Link href="/kelas" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Kelas</Link>
+          </div>
+          
+          <div className="space-y-1 py-2 border-b border-white/10">
+             <p className="text-white/50 text-[11px] font-bold uppercase tracking-wider mb-2">Fitur</p>
+             <Link href={isLoggedIn ? '/quran' : '/welcome'} className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Sahabat Qur'an</Link>
+             <Link href={isLoggedIn ? '/keilmuan' : '/welcome'} className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Keilmuan</Link>
+          </div>
+
+          <div className="space-y-1 py-2 border-b border-white/10">
+             <p className="text-white/50 text-[11px] font-bold uppercase tracking-wider mb-2">Donasi</p>
+             {/* Link mobile sudah disesuaikan dengan slug yang diminta */}
+             <Link href="/donasi/wakaf-quran" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Wakaf Al-Qur'an</Link>
+             <Link href="/donasi/sodaqoh" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Sodaqoh Jariyah</Link>
+             <Link href="/donasi/infaq-asatidz" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Infaq Asatidz</Link>
+             <Link href="/donasi/katalog-produk" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Katalog Produk</Link>
+          </div>
+
+          <div className="pt-2">
+            {isLoggedIn ? (
+              <button onClick={handleLogout} className="flex items-center gap-2 text-red-300 text-sm py-2.5 font-bold">
+                <LogOut size={16} /> Keluar
+              </button>
+            ) : (
+              <Link href="/login" className="block py-3 mt-2 bg-white text-[#1a7a53] text-center rounded-xl text-sm font-bold"
+                onClick={() => setMobileOpen(false)}
+              >
+                Masuk
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </nav>
