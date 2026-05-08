@@ -1,195 +1,158 @@
-"use client"
+'use client'
 
-import React, { useState } from "react"
-import Link from "next/link"
-import { Copy, CheckCircle2 } from "lucide-react"
+import { useState } from 'react'
+import Link from 'next/link'
+import { Copy, CheckCircle2, ChevronRight } from 'lucide-react'
 
-// Jika kamu butuh data dari file lokalmu, pastikan import ini di-uncomment:
-// import { categories } from "../data/donasi"
+const NOMINALS = [10000, 25000, 50000, 100000, 150000]
+const PAYMENT_METHODS = ['Transfer Bank (BCA)', 'Transfer Bank (BNI)', 'Transfer Bank (BSI)', 'GoPay', 'OVO', 'Dana', 'QRIS']
 
-export default function FormDonasiInfaq({ slug }: { slug: string }) {
-  // Dummy fallback untuk judul Infaq Asatidz
-  const fallbackData = { 
-    title: "Infaq Asatidz", 
-    description: "Bisyaroh dan bentuk apresiasi untuk para pejuang dakwah & pengajar Al-Qur'an." 
-  }
-  // const data = categories?.find((c) => c.slug === slug) || fallbackData
-  const data = fallbackData; // Gunakan ini sementara untuk test UI
+const imgBg       = "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?auto=format&fit=crop&q=80&w=1400"
+const imgEAbsensi = "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=400"
+const imgCBT      = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=400"
+const imgIconStar = "https://cdn-icons-png.flaticon.com/512/1828/1828884.png"
 
-  const nominals = [10000, 25000, 50000, 100000, 150000]
-  
+export default function InfaqAsatidzPage() {
   const [selectedNominal, setSelectedNominal] = useState<number | null>(null)
-  const [customNominal, setCustomNominal] = useState<string>("")
-  const [copied, setCopied] = useState(false)
+  const [customNominal, setCustomNominal]     = useState('')
+  const [paymentMethod, setPaymentMethod]     = useState('')
+  const [copied, setCopied]                   = useState(false)
+  const [success, setSuccess]                 = useState(false)
+
+  const formatRupiah = (n: string | number) =>
+    n.toString().replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
   const handleCopy = () => {
-    navigator.clipboard.writeText("08121323111")
+    navigator.clipboard.writeText('08121323111')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Format angka ke Rupiah
-  const formatRupiah = (angka: string | number) => {
-    const str = angka.toString().replace(/\D/g, "")
-    return str.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  const handleDonasi = () => {
+    if (!selectedNominal && !customNominal) return alert('Pilih nominal terlebih dahulu')
+    if (!paymentMethod) return alert('Pilih metode pembayaran')
+    setSuccess(true)
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#f8fffe] flex items-center justify-center p-8">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 size={48} className="text-[#157a52]" />
+          </div>
+          <h2 className="text-3xl font-bold text-[#0c1421]">Jazakumullahu Khairan!</h2>
+          <p className="text-gray-500">Donasi Infaq Asatidz kamu berhasil diproses. Semoga menjadi amal jariyah yang terus mengalir.</p>
+          <Link href="/" className="block bg-[#157a52] text-white py-4 rounded-xl font-bold hover:bg-[#0c2e1c] transition-all">
+            Kembali ke Beranda
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="bg-[#f8fffe] min-h-screen font-['Poppins',sans-serif]">
 
-      {/* ================= HERO SECTION (BACKGROUND GAMBAR INFAQ) ================= */}
+      {/* HERO */}
       <section className="relative text-white pt-32 pb-24 px-6 overflow-hidden flex items-center justify-center min-h-[350px]">
-        {/* Gambar Background Utama */}
-        <div className="absolute inset-0 z-0 bg-[#0c2e1c]">
-          <img 
-            src="/Rectangle 23831 (1).png" 
-            alt="Hero Background Infaq" 
-            className="w-full h-full object-cover opacity-80 mix-blend-overlay"
-          />
-          {/* Overlay Hijau Transparan */}
-          <div className="absolute inset-0 bg-[#0d5c3a]/70 mix-blend-multiply" />
+        <div className="absolute inset-0 z-0">
+          <img src={imgBg} alt="Infaq Asatidz" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-[#0d5c3a]/80 mix-blend-multiply" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d5c3a]/95 to-transparent" />
         </div>
-
-        {/* Konten Text di Atas Gambar */}
         <div className="max-w-5xl mx-auto text-center space-y-4 relative z-10 mt-6">
-          {/* LOGO DIHAPUS DARI SINI SESUAI PERMINTAAN */}
-          <div className="inline-flex items-center gap-2 border border-[#d3ad0f] text-[#d3ad0f] font-bold px-5 py-2 rounded-full text-[13px] md:text-sm bg-[#0c2e1c]/40 backdrop-blur-sm mb-2 shadow-lg">
-            Program Donasi KajianQu
-          </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight drop-shadow-md">
-            {data.title}
-          </h1>
-          <p className="text-white/90 max-w-2xl mx-auto text-[14px] md:text-[16px] leading-relaxed drop-shadow-sm">
-            {data.description}
+          <p className="text-[#d3ad0f] text-sm font-bold uppercase tracking-widest">Program Donasi</p>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight drop-shadow-md">Infaq Asatidz</h1>
+          <p className="text-white/90 max-w-2xl mx-auto text-[14px] md:text-[16px] leading-relaxed">
+            Perbanyak pahala dengan amal jariyah, dengan salah satu program donasi kami yaitu Dengan Wakaf Al-Qur'an.
           </p>
         </div>
       </section>
 
-      {/* ================= CONTENT MAIN ================= */}
+      {/* MAIN CONTENT */}
       <div className="max-w-[1200px] mx-auto px-6 pb-20 mt-[-50px] relative z-20">
-        
-        {/* ── GRID ATAS: FORM KIRI & SIDEBAR KANAN ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 mb-8 md:mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 mb-8">
 
-          {/* ================= KIRI: FORM DONASI ================= */}
+          {/* FORM DONASI */}
           <div className="lg:col-span-7 space-y-8">
             <div className="bg-white p-6 md:p-10 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
-              <h2 className="text-[22px] md:text-[26px] font-bold text-[#0c1421] mb-6">Lengkapi Donasi</h2>
 
               {/* NO REKENING */}
               <div className="mb-8">
-                <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-3">No. Rekening Transfer</label>
+                <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-3">No. Rekening</label>
                 <div className="flex items-center justify-between p-4 md:p-5 bg-[#e8f5ee] border border-[#157a52]/20 rounded-[20px]">
-                  <div className="flex flex-col">
-                    <span className="text-[12px] md:text-[13px] text-[#157a52] font-semibold mb-1">Bank Syariah Indonesia (BSI)</span>
-                    <span className="text-[#0c1421] font-bold text-[22px] md:text-[24px] tracking-wider leading-none">
-                      08121323111
-                    </span>
-                  </div>
-                  <button 
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-[#157a52] rounded-[10px] border border-gray-200 hover:bg-[#157a52] hover:text-white transition-all shadow-sm font-bold text-[13px]"
-                  >
+                  <span className="text-[#0c1421] font-bold text-[22px] md:text-[24px] tracking-wider">08121323111</span>
+                  <button onClick={handleCopy} className="flex items-center gap-2 px-4 py-2 bg-white text-[#157a52] rounded-[10px] border border-gray-200 hover:bg-[#157a52] hover:text-white transition-all shadow-sm font-bold text-[13px]">
                     {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                    <span className="hidden sm:inline">{copied ? "Berhasil" : "Salin"}</span>
+                    <span className="hidden sm:inline">{copied ? 'Berhasil' : 'Salin'}</span>
                   </button>
                 </div>
               </div>
 
               {/* NOMINAL */}
               <div className="mb-8">
-                <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-3">Pilih Nominal Infaq</label>
-
+                <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-3">Pilih Nominal</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {nominals.map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => {
-                        setSelectedNominal(n)
-                        setCustomNominal("")
-                      }}
-                      className={`p-3.5 border-2 rounded-[16px] text-[14px] font-bold transition-all ${
-                        selectedNominal === n
-                        ? "border-[#157a52] bg-[#157a52] text-white shadow-md scale-[1.02]"
-                        : "border-gray-100 bg-gray-50 text-gray-600 hover:border-[#157a52]/50 hover:bg-white"
-                      }`}
+                  {NOMINALS.map(n => (
+                    <button key={n} onClick={() => { setSelectedNominal(n); setCustomNominal('') }}
+                      className={`p-3.5 border-2 rounded-[16px] text-[14px] font-bold transition-all ${selectedNominal === n ? 'border-[#157a52] bg-[#157a52] text-white shadow-md scale-[1.02]' : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-[#157a52]/50'}`}
                     >
-                      Rp {n.toLocaleString("id-ID")}
+                      Rp {n.toLocaleString('id-ID')}
                     </button>
                   ))}
-
-                  <button 
-                    onClick={() => {
-                      setSelectedNominal(null)
-                      document.getElementById("input-nominal-custom")?.focus()
-                    }}
-                    className={`p-3.5 border-2 rounded-[16px] text-[14px] font-bold transition-all ${
-                      !selectedNominal && customNominal !== ""
-                      ? "border-[#157a52] bg-[#157a52] text-white shadow-md scale-[1.02]"
-                      : "border-gray-100 bg-gray-50 text-gray-600 hover:border-[#157a52]/50 hover:bg-white"
-                    }`}
+                  <button onClick={() => { setSelectedNominal(null); setCustomNominal('0') }}
+                    className={`p-3.5 border-2 rounded-[16px] text-[14px] font-bold transition-all ${!selectedNominal && customNominal ? 'border-[#157a52] bg-[#157a52] text-white' : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-[#157a52]/50'}`}
                   >
                     Nominal Lainnya
                   </button>
                 </div>
-
-                {/* INPUT CUSTOM NOMINAL */}
-                <div className={`overflow-hidden transition-all duration-300 ${(!selectedNominal && customNominal !== "") || (!selectedNominal && customNominal === "") ? 'h-[60px] opacity-100 mt-4' : 'h-0 opacity-0 m-0'}`}>
-                  <div className="flex items-center border-2 border-[#157a52] rounded-[16px] px-5 h-full bg-[#157a52]/5 focus-within:ring-4 focus-within:ring-[#157a52]/10 transition-all">
+                {(!selectedNominal) && (
+                  <div className="flex items-center border-2 border-[#157a52] rounded-[16px] px-5 h-[60px] bg-[#157a52]/5 mt-4">
                     <span className="text-[#157a52] font-bold text-[16px] mr-3">Rp</span>
                     <input
-                      id="input-nominal-custom"
-                      type="text"
-                      placeholder="Masukkan jumlah donasi..."
-                      value={customNominal ? formatRupiah(customNominal) : ""}
-                      onChange={(e) => {
-                        setCustomNominal(e.target.value)
-                        setSelectedNominal(null)
-                      }}
-                      className="flex-1 bg-transparent text-[16px] font-bold text-[#0c1421] placeholder:text-gray-400 focus:outline-none w-full"
+                      type="text" placeholder="Masukkan Nominal"
+                      value={customNominal ? formatRupiah(customNominal) : ''}
+                      onChange={e => setCustomNominal(e.target.value)}
+                      className="flex-1 bg-transparent text-[16px] font-bold text-[#0c1421] placeholder:text-gray-400 focus:outline-none"
                     />
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* METODE PEMBAYARAN & SUBMIT */}
+              {/* METODE PEMBAYARAN */}
               <div className="space-y-6 pt-6 border-t border-gray-100">
                 <div className="space-y-3">
                   <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest">Metode Pembayaran</label>
                   <div className="relative">
-                    <select className="w-full h-[56px] px-5 bg-white border-2 border-gray-100 rounded-[16px] focus:border-[#157a52] focus:ring-4 focus:ring-[#157a52]/10 outline-none font-semibold text-[#0c1421] appearance-none cursor-pointer transition-all">
-                      <option value="" disabled selected>Pilih Metode Pembayaran</option>
-                      <option>Transfer Bank (Konfirmasi Otomatis)</option>
-                      <option>E-Wallet (OVO / Dana / GoPay)</option>
-                      <option>QRIS</option>
+                    <select
+                      value={paymentMethod}
+                      onChange={e => setPaymentMethod(e.target.value)}
+                      className="w-full h-[56px] px-5 bg-white border-2 border-gray-100 rounded-[16px] focus:border-[#157a52] outline-none font-semibold text-[#0c1421] appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>Metode Pembayaran</option>
+                      {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                     <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
                   </div>
                 </div>
-
-                <button className="w-full h-[60px] bg-[#157a52] text-white font-bold text-[16px] md:text-[18px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg shadow-[#157a52]/30 tracking-wide">
+                <button onClick={handleDonasi} className="w-full h-[60px] bg-[#157a52] text-white font-bold text-[16px] md:text-[18px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg tracking-wide">
                   Donasi Sekarang
                 </button>
               </div>
             </div>
           </div>
 
-          {/* ================= KANAN: SIDEBAR ================= */}
+          {/* SIDEBAR */}
           <div className="lg:col-span-5 space-y-6">
-
-            {/* PENGGALANG */}
-            <div className="bg-white p-6 md:p-8 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.06)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#e8f5ee] rounded-full -mr-16 -mt-16 opacity-60"></div>
-              
-              <h3 className="font-bold text-[#0c1421] text-[18px] mb-6 relative z-10">Penggalang Dana</h3>
-
-              <div className="flex items-center gap-4 relative z-10">
-                {/* IKON EMAS ASLI DENGAN BACKGROUND PUTIH */}
-                <div className="w-16 h-16 bg-white border border-gray-100 flex items-center justify-center rounded-[16px] p-3 shrink-0 shadow-sm">
-                   <img src="/image_c8c79a.png" alt="Icon Infaq" className="w-full h-full object-contain" />
+            {/* Penggalang Dana */}
+            <div className="bg-white p-6 md:p-8 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+              <h3 className="font-bold text-[#0c1421] text-[18px] mb-6">Penggalang Dana</h3>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-[#e8f5ee] rounded-[16px] flex items-center justify-center p-3 shrink-0">
+                  <img src={imgIconStar} alt="KajianQU" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <p className="font-bold text-[#157a52] text-[18px]">KajianQU</p>
@@ -201,96 +164,63 @@ export default function FormDonasiInfaq({ slug }: { slug: string }) {
               </div>
             </div>
 
-            {/* DONASI LAIN */}
+            {/* Donasi Lainnya */}
             <div className="bg-white p-6 md:p-8 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
               <h3 className="font-bold text-[#0c1421] text-[18px] mb-4 border-b border-gray-100 pb-4">Donasi Lainnya</h3>
-
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[
-                  { 
-                    id: 'wakaf-quran', 
-                    title: "Wakaf Al-Qur'an", 
-                    desc: "Bantu sediakan Al-Qur'an yang layak untuk pelosok.", 
-                    img: "/Screenshot 2026-03-27 160234.jpg" 
-                  },
-                  { 
-                    id: 'sodaqoh', 
-                    title: "Sodaqoh Jariyah", 
-                    desc: "Bantu pembangunan pondok pesantren dan fasilitas belajar.", 
-                    img: "/Perwira-Bangun-Sekolah 1.jpg" 
-                  },
-                  { 
-                    id: 'katalog-produk', 
-                    title: "Katalog Produk", 
-                    desc: "Beli produk sambil berdonasi untuk umat.", 
-                    img: "/Screenshot 2026-03-27 160857.jpg" 
-                  }
-                ].map((cat) => (
-                  <Link
-                    key={cat.id}
-                    href={`/donasi/${cat.id}`}
-                    className="group flex gap-4 p-3 border border-gray-100 rounded-[20px] hover:border-[#157a52]/30 hover:shadow-md transition-all bg-gray-50/50 hover:bg-white"
+                  { href: '/donasi/sodaqoh',       label: 'Sodaqoh',          desc: 'Sodaqoh yang akan dikelola' },
+                  { href: '/donasi/wakaf-quran',   label: "Wakaf Al-Qur'an",  desc: "Wakaf akan di belikan Al-Qur'an" },
+                  { href: '/donasi/katalog-produk', label: 'Katalog Produk',   desc: 'Produk dari hasil sodaqoh' },
+                ].map(item => (
+                  <Link key={item.href} href={item.href}
+                    className="flex items-center justify-between p-4 rounded-[16px] hover:bg-emerald-50 border border-gray-100 hover:border-[#157a52]/20 transition-all group"
                   >
-                    <div className="w-20 h-20 rounded-[14px] overflow-hidden shrink-0 bg-gray-100">
-                      <img src={cat.img} alt={cat.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div>
+                      <p className="font-bold text-[#157a52] text-[15px] group-hover:underline">{item.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
                     </div>
-                    <div className="flex flex-col justify-center">
-                      <h4 className="font-bold text-[#0c1421] text-[14px] group-hover:text-[#157a52] transition-colors line-clamp-1">{cat.title}</h4>
-                      <p className="text-[12px] text-gray-500 mt-1 line-clamp-2">{cat.desc}</p>
-                    </div>
+                    <ChevronRight size={16} className="text-[#157a52]" />
                   </Link>
                 ))}
               </div>
             </div>
-            
           </div>
         </div>
 
-        {/* ── BAWAH: BOARD KETERANGAN PROGRAM (FULL WIDTH) ── */}
+        {/* KETERANGAN */}
         <div className="bg-white p-8 md:p-12 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.06)] max-w-5xl mx-auto mt-4">
-          <h3 className="font-bold text-[#0c1421] text-[24px] md:text-[28px] text-center mb-8 border-b border-gray-100 pb-4">
-            Keterangan Program
-          </h3>
-          
-          <div className="space-y-6 text-[15px] md:text-[16px] text-gray-600 leading-relaxed text-justify max-w-4xl mx-auto">
-            <p>
-              <strong>Assalamu'alaikum #OrangBaik,</strong>
-            </p>
-            <p>
-              Dibalik generasi yang cinta Al-Qur'an, selalu ada sosok guru (Asatidz) yang tanpa lelah dan ikhlas mengajarkan setiap huruf Hijaiyah. Namun, tahukah kamu? Banyak dari para Asatidz di pelosok yang mendedikasikan seluruh waktunya untuk mengajar, namun tidak mendapatkan bisyaroh (apresiasi/upah) yang layak. Bahkan, banyak yang hanya dibayar seikhlasnya.
-            </p>
-            
-            {/* Highlight Box Keutamaan */}
-            <div className="bg-[#e8f5ee] p-6 md:p-8 rounded-[24px] border border-[#157a52]/20 my-8">
-              <p className="font-bold text-[#157a52] text-[18px] mb-4">Keutamaan Infaq untuk Asatidz:</p>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Memuliakan Ahli Ilmu:</strong> Mengapresiasi para guru ngaji sama dengan memuliakan agama Allah. Merekalah ujung tombak penjaga kemurnian Al-Qur'an di masyarakat.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Pahala Mengalir Tanpa Henti:</strong> Setiap huruf yang diajarkan oleh Ustadz kepada santrinya berkat bantuanmu, pahalanya akan ikut mengalir kepadamu.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Meringankan Beban Ekonomi:</strong> Membantu mencukupi kebutuhan hidup para Asatidz agar mereka bisa lebih fokus dalam mendidik dan berdakwah.</span>
-                </li>
-              </ul>
-            </div>
-
-            <p>
-              KajianQu memfasilitasi niat baikmu untuk memberikan bisyaroh (tanda kasih) kepada para Asatidz pejuang dakwah di berbagai daerah. Mari sisihkan sedikit rezeki kita untuk memuliakan pahlawan tanpa tanda jasa ini.
-            </p>
-            <p className="font-bold text-[#0c1421] pt-4 text-center">
-              Jazakumullahu Khairan Katsiran.<br/>
-              Semoga Allah melapangkan rezekimu dan memberkahi setiap langkahmu.
-            </p>
+          <h3 className="font-bold text-[#0c1421] text-[24px] md:text-[28px] text-center mb-8 border-b border-gray-100 pb-4">Keterangan</h3>
+          <div className="space-y-4 text-[15px] text-gray-600 leading-relaxed text-justify max-w-4xl mx-auto">
+            <p>Tahukah Anda bahwa wakaf bukan sekadar amal biasa? Wakaf adalah investasi abadi yang pahalanya terus mengalir bahkan setelah kita tiada.</p>
+            <p>Dengan berwakaf, kita bisa membangun masjid, sekolah, rumah sakit, atau sumur air bersih yang akan terus memberi manfaat bagi banyak orang. Setiap sujud yang dilakukan, setiap ilmu yang diajarkan, dan setiap tetes air yang diminum, menjadi amal jariyah bagi kita.</p>
+            <p><strong>🌱 Sedekah yang Tak Terputus</strong><br />Berbeda dengan sedekah biasa, wakaf terus berlipat ganda manfaatnya. Wakaf yang kita berikan hari ini, akan terus menjadi sumber kebaikan hingga generasi mendatang.</p>
+            <p><strong>🌟 Berapapun Nilainya, Pahalanya Tak Terbatas</strong><br />Jangan khawatir jika Anda merasa jumlah yang diberikan kecil. Dengan wakaf tunai, siapapun bisa berkontribusi sesuai kemampuan, dan manfaatnya tetap luar biasa!</p>
+            <p><strong>🏆 Saatnya Beraksi!</strong><br />Jadilah bagian dari perubahan. Mari berwakaf dan jadikan harta kita sebagai ladang pahala yang tak terputus.</p>
           </div>
         </div>
 
+        {/* PROGRAM BUATAN */}
+        <div className="mt-12">
+          <h3 className="font-bold text-[#0c1421] text-[22px] mb-6">Program Buatan kami</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-white rounded-[24px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all">
+              <img src={imgEAbsensi} alt="E-Absensi" className="w-full h-48 object-cover" />
+              <div className="p-6">
+                <h4 className="font-bold text-gray-800 text-lg">E-Absensi</h4>
+                <p className="text-gray-500 text-sm mt-1">Sistem digital buat mencatat kehadiran secara otomatis (online).</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-[24px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all">
+              <img src={imgCBT} alt="CBT" className="w-full h-48 object-cover" />
+              <div className="p-6">
+                <h4 className="font-bold text-gray-800 text-lg">CBT (Computer Based Test)</h4>
+                <p className="text-gray-500 text-sm mt-1">Sistem ujian berbasis komputer yang memungkinkan peserta mengerjakan soal secara digital.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
     </div>
   )
 }

@@ -1,5 +1,4 @@
-
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
@@ -21,11 +20,9 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <>
       <PublicNavbar userProfile={userProfile} />
-      
       <main>
         {children}
       </main>
-      
       <PublicFooter />
     </>
   )

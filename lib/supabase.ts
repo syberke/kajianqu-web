@@ -1,13 +1,9 @@
-// lib/supabase.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { QuranMode } from '@/types/quran'
-
-// ─── Row types (dipakai di service layer) ────────────────────────────────────
 
 export interface QuranSessionRow {
   id: string
   user_id: string
-  mode: QuranMode
+  mode: string
   surah_id: number
   surah_name: string
   ayah_start: number
@@ -40,12 +36,8 @@ export interface QuranMistakeRow {
 
 export type QuranMistakeInsert = Omit<QuranMistakeRow, 'id' | 'created_at'>
 
-// ─── Client ──────────────────────────────────────────────────────────────────
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Pakai untyped client — tipe dihandle manual di service layer
-// (menghindari error "never" dari Supabase generic inference di v2)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: SupabaseClient<any> = createClient(supabaseUrl, supabaseAnonKey)

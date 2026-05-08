@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 
-const imgLoginArt = "https://www.figma.com/api/mcp/asset/1a24b781-4731-4611-b596-24fd10d1c517"
+const imgLoginArt = "https://images.unsplash.com/photo-1585036156171-384164a8c675?auto=format&fit=crop&q=80&w=1200"
 const imgLogo     = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
 
 const BANKS       = ['BCA','BNI','BRI','Mandiri','BSI','CIMB Niaga','Permata','Danamon','Lainnya']
@@ -63,7 +63,6 @@ export default function RegisterAsatidzPage() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* ── KIRI: Form ── */}
       <div className="flex-1 flex items-center justify-center p-8 lg:p-12 overflow-y-auto">
         <div className="w-full max-w-[480px] space-y-8 py-8">
           <div className="space-y-3">
@@ -72,13 +71,12 @@ export default function RegisterAsatidzPage() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5">
-            {/* Data Pribadi */}
-            <Field label="Nama Lengkap" placeholder="Masukkan nama lengkap" value={form.nama} onChange={v => onChange('nama', v)} required />
-            <Field label="Email" type="email" placeholder="Masukkan email" value={form.email} onChange={v => onChange('email', v)} required />
-            <Field label="No. WhatsApp" placeholder="Contoh: 08123456789" value={form.no_wa} onChange={v => onChange('no_wa', v)} required />
+            <Field label="Nama Lengkap" placeholder="Masukkan nama lengkap"  value={form.nama}  onChange={v => onChange('nama', v)}  required />
+            <Field label="Email"        type="email" placeholder="Masukkan email"          value={form.email} onChange={v => onChange('email', v)} required />
+            <Field label="No. WhatsApp" placeholder="Contoh: 08123456789"    value={form.no_wa} onChange={v => onChange('no_wa', v)} required />
 
             <div className="space-y-2">
-              <label className="text-[#0c1421] text-base font-['Roboto',sans-serif]">Password</label>
+              <label className="text-[#0c1421] text-base">Password</label>
               <div className="relative">
                 <input
                   type={showPass ? 'text' : 'password'} required minLength={8}
@@ -92,18 +90,14 @@ export default function RegisterAsatidzPage() {
               </div>
             </div>
 
-            {/* Divider — Data Asatidz */}
-            <div className="pt-1 pb-1">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-[#d4d7e3]" />
-                <span className="text-[#1a7a53] text-sm font-semibold font-['Poppins',sans-serif] uppercase tracking-widest whitespace-nowrap">Data Asatidz</span>
-                <div className="flex-1 h-px bg-[#d4d7e3]" />
-              </div>
+            <div className="flex items-center gap-3 py-2">
+              <div className="flex-1 h-px bg-[#d4d7e3]" />
+              <span className="text-[#1a7a53] text-sm font-semibold uppercase tracking-widest whitespace-nowrap">Data Asatidz</span>
+              <div className="flex-1 h-px bg-[#d4d7e3]" />
             </div>
 
-            {/* Bidang */}
             <div className="space-y-2">
-              <label className="text-[#0c1421] text-base font-['Roboto',sans-serif]">Bidang Mengajar</label>
+              <label className="text-[#0c1421] text-base">Bidang Mengajar</label>
               <select required value={form.bidang} onChange={e => onChange('bidang', e.target.value)}
                 className="w-full h-12 bg-[#f7fbff] border border-[#d4d7e3] rounded-xl px-4 text-base text-[#0c1421] focus:outline-none focus:border-[#1a7a53] focus:ring-2 focus:ring-[#1a7a53]/20 transition-all"
               >
@@ -112,9 +106,8 @@ export default function RegisterAsatidzPage() {
               </select>
             </div>
 
-            {/* Bank */}
             <div className="space-y-2">
-              <label className="text-[#0c1421] text-base font-['Roboto',sans-serif]">Bank</label>
+              <label className="text-[#0c1421] text-base">Bank</label>
               <select required value={form.bank} onChange={e => onChange('bank', e.target.value)}
                 className="w-full h-12 bg-[#f7fbff] border border-[#d4d7e3] rounded-xl px-4 text-base text-[#0c1421] focus:outline-none focus:border-[#1a7a53] focus:ring-2 focus:ring-[#1a7a53]/20 transition-all"
               >
@@ -127,19 +120,18 @@ export default function RegisterAsatidzPage() {
 
             {message && <p className="text-red-500 text-sm text-center bg-red-50 py-2 px-4 rounded-xl">{message}</p>}
 
-            <button type="submit" disabled={loading} className="w-full h-14 bg-[#1a7a53] text-white text-xl font-['Roboto',sans-serif] rounded-xl hover:bg-[#15613f] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed">
+            <button type="submit" disabled={loading} className="w-full h-14 bg-[#1a7a53] text-white text-xl rounded-xl hover:bg-[#15613f] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed">
               {loading ? 'Mendaftar...' : 'Daftar Sekarang'}
             </button>
           </form>
 
-          <p className="text-center text-lg font-['Roboto',sans-serif]">
+          <p className="text-center text-lg">
             <span className="text-[#313957]">Sudah Punya Akun? </span>
             <Link href="/login" className="text-[#1e4ae9] hover:underline font-medium">Masuk Disini</Link>
           </p>
         </div>
       </div>
 
-      {/* ── KANAN: Art ── */}
       <div className="hidden lg:flex flex-1 items-stretch p-8 sticky top-0 h-screen">
         <div className="relative w-full rounded-[24px] overflow-hidden">
           <img src={imgLoginArt} alt="Art" className="absolute inset-0 w-full h-full object-cover" />
@@ -159,7 +151,7 @@ function Field({ label, placeholder, value, onChange, type = 'text', required = 
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-[#0c1421] text-base font-['Roboto',sans-serif]">{label}</label>
+      <label className="text-[#0c1421] text-base">{label}</label>
       <input type={type} required={required} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
         className="w-full h-12 bg-[#f7fbff] border border-[#d4d7e3] rounded-xl px-4 text-base text-[#0c1421] placeholder:text-[#8897ad] focus:outline-none focus:border-[#1a7a53] focus:ring-2 focus:ring-[#1a7a53]/20 transition-all"
       />
