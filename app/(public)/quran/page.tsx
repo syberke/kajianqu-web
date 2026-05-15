@@ -1,15 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
-import QuranClient from './QuranClient'
+import { QURAN_SURAHS } from '@/lib/quran-data'
+import QuranSetoranClient from './QuranClient'
 
-export default async function QuranPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+interface Props {
+  params:       Promise<{ surahId: string }>
+  searchParams: Promise<{ start?: string; end?: string }>
+}
 
-  let userProfile = null
-  if (user) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-    userProfile = data
-  }
+export default async function TahsinPage({ params, searchParams }: Props) {
+  const { surahId }    = await params
+  const { start, end } = await searchParams
 
-  return <QuranClient userProfile={userProfile} />
+  const mode = 'tahsin' // ✅ hardcode, BUKAN dari params
+
+  const id    = parseInt(surahId)
+  const surah = QURAN_SURAHS[id]
+
+  const surahInfo = surah
+    ? { id, name: surah.name, arabic: surah.nameArabic, totalAyat: surah.totalAyat, type: 'Makkiyah' }
+    : { id, name: `Surah ${id}`, arabic: '', totalAyat: 7, type: 'Makkiyah' }
+
+  const ayahStart = parseInt(start || '1')
+  const ayahEnd   = parseInt(end   || String(surahInfo.totalAyat))
+
+  return (
+    <QuranSetoranClient
+      mode={mode}
+      surahInfo={surahInfo}
+      ayahStart={ayahStart}
+      ayahEnd={ayahEnd}
+    />
+  )
 }

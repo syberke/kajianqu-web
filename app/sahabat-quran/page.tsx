@@ -3,7 +3,7 @@
   import { useState, useEffect } from 'react';
   import { Search, ListFilter, BookOpen, Hash, ChevronRight, Sparkles } from 'lucide-react';
   import { QuranService } from '@/lib/quran-service';
-  import { AyatItem } from '../../../../components/AyatItems';
+  import { AyatItem } from '../../components/AyatItems';
 
   export default function QuranHubPage() {
     const [activeTab, setActiveTab] = useState<'tahsin' | 'tahfidz'>('tahsin');

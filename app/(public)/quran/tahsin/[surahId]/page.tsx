@@ -1,19 +1,17 @@
-
-
-import { notFound } from 'next/navigation'
 import { QURAN_SURAHS } from '@/lib/quran-data'
 import QuranSetoranClient from './QuranSetoranClient'
 
 interface Props {
-  params: Promise<{ mode: string; surahId: string }>
+  params:       Promise<{ surahId: string }>
   searchParams: Promise<{ start?: string; end?: string }>
 }
 
-export default async function QuranSetoranPage({ params, searchParams }: Props) {
-  const { mode, surahId } = await params
-  const { start, end }    = await searchParams
+export default async function TahsinPage({ params, searchParams }: Props) {
+  const { surahId }    = await params
+  const { start, end } = await searchParams
 
-  if (mode !== 'tahfidz' && mode !== 'tahsin') notFound()
+  // ✅ HARDCODE 'tahsin' — tidak dari params
+  const mode = 'tahsin'
 
   const id    = parseInt(surahId)
   const surah = QURAN_SURAHS[id]
@@ -27,7 +25,7 @@ export default async function QuranSetoranPage({ params, searchParams }: Props) 
 
   return (
     <QuranSetoranClient
-      mode={mode as 'tahfidz' | 'tahsin'}
+      mode={mode}
       surahInfo={surahInfo}
       ayahStart={ayahStart}
       ayahEnd={ayahEnd}
