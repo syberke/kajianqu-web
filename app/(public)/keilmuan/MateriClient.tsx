@@ -10,26 +10,46 @@ const LEVELS: Record<string, string> = {
   mudah: 'bg-emerald-500', menengah: 'bg-orange-400', sulit: 'bg-red-500'
 }
 
-const DUMMY_MATERI = [
-  { id:'1', slug:'hukum-tahlilan-1', title:'Hukumnya Tahlilan', keilmuan:{nama:'Fiqih'}, summary:'Fiqhul Wadhih', level:'mudah',    image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-  { id:'2', slug:'hukum-tahlilan-2', title:'Hukumnya Tahlilan', keilmuan:{nama:'Fiqih'}, summary:'Safinatun Najah', level:'menengah', image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-  { id:'3', slug:'hukum-tahlilan-3', title:'Hukumnya Tahlilan', keilmuan:{nama:'Tafsir'}, summary:'Tafsir Ibnu Katsir', level:'mudah', image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-  { id:'4', slug:'hukum-tahlilan-4', title:'Hukumnya Tahlilan', keilmuan:{nama:'B.Arab'}, summary:'Nahwu',  level:'sulit', image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-  { id:'5', slug:'hukum-tahlilan-5', title:'Hukumnya Tahlilan', keilmuan:{nama:'Akhlak'}, summary:'Akhak lil Banin', level:'mudah', image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-  { id:'6', slug:'hukum-tahlilan-6', title:'Hukumnya Tahlilan', keilmuan:{nama:'Akhlak'}, summary:"Ta'limul Muta'lim", level:'sulit', image:'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500' },
-]
+// 1. Define explicit TypeScript interfaces for safety
+interface Keilmuan {
+  id?: any;
+  nama: string;
+}
 
-export default function MateriClient() {
+interface MateriItem {
+  id: string;
+  slug: string;
+  title: string;
+  keilmuan: Keilmuan;
+  summary?: string;
+  level: 'mudah' | 'menengah' | 'sulit' | string;
+  image?: string;
+}
+
+interface MateriClientProps {
+  initialMaterials: MateriItem[];
+  keilmuanList: Keilmuan[];
+}
+
+// 2. Accept props from the server page component
+export default function MateriClient({ initialMaterials, keilmuanList }: MateriClientProps) {
   const [search, setSearch]         = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTopic, setTopic]   = useState('')
-  const [materi, setMateri]         = useState<any[]>(DUMMY_MATERI)
+  
+  // 3. Initialize state with the initialMaterials passed from the parent server component
+  const [materi, setMateri]         = useState<MateriItem[]>(initialMaterials || [])
   const [loading, setLoading]       = useState(false)
 
+  // Fetch updates client-side if needed, fallback to initial props if service fails
   useEffect(() => {
+    setLoading(true)
     MateriService.getAllMaterials()
-      .then(data => { if (data?.length) setMateri(data) })
-      .catch(() => {})
+      .then(data => { 
+        if (data?.length) setMateri(data) 
+      })
+      .catch((err) => console.error("Failed to fetch material list:", err))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleSearch = () => setSearchQuery(search)
@@ -37,7 +57,9 @@ export default function MateriClient() {
 
   const filtered = useMemo(() =>
     materi.filter(m => {
-      const matchSearch = !searchQuery || m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || m.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchSearch = !searchQuery || 
+        m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        m.summary?.toLowerCase().includes(searchQuery.toLowerCase())
       const matchTopic  = !selectedTopic || m.keilmuan?.nama === selectedTopic
       return matchSearch && matchTopic
     }), [materi, searchQuery, selectedTopic]
@@ -98,6 +120,8 @@ export default function MateriClient() {
                   <span className={`w-4 h-4 border-2 rounded flex-shrink-0 ${!selectedTopic ? 'border-[#157a52] bg-[#157a52]' : 'border-gray-300'}`} />
                   Semua
                 </button>
+                
+                {/* Dynamically fallback to keilmuanList props if TOPICS is not needed */}
                 {TOPICS.map(t => (
                   <button key={t} onClick={() => setTopic(t === selectedTopic ? '' : t)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition-all text-left ${selectedTopic === t ? 'bg-[#e8f5ee] text-[#157a52] font-bold' : 'text-gray-500 hover:bg-gray-50'}`}
@@ -112,7 +136,7 @@ export default function MateriClient() {
 
           {/* MATERI GRID */}
           <div className="lg:col-span-3">
-            {loading ? (
+            {loading && filtered.length === 0 ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-[#157a52]" />
               </div>

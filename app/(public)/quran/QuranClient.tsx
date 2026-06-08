@@ -28,6 +28,14 @@ interface JuzItem {
   surahCount: number
 }
 
+// Interface untuk mencocokkan payload dari API alquran.cloud
+interface ApiSurahItem {
+  number: string | number
+  englishName: string
+  revelationType: string
+  numberOfAyahs: string | number
+}
+
 // ── 114 Surah fallback (dipakai saat API belum selesai) ───────────────────────
 const SURAH_FALLBACK: SurahItem[] = [
   { id:1,   name:'Al-Fatihah',    type:'Makkiyah',  ayat:7   },
@@ -146,7 +154,7 @@ const SURAH_FALLBACK: SurahItem[] = [
   { id:114, name:'An-Nas',        type:'Makkiyah',  ayat:6   },
 ]
 
-// Juz 1-30 dengan jumlah surah per juz (approximate)
+// Juz 1-30 dengan jumlah surah per juz
 const JUZ_DATA: JuzItem[] = [
   {juz:1,surahCount:2},{juz:2,surahCount:1},{juz:3,surahCount:2},{juz:4,surahCount:2},{juz:5,surahCount:2},
   {juz:6,surahCount:2},{juz:7,surahCount:2},{juz:8,surahCount:2},{juz:9,surahCount:2},{juz:10,surahCount:2},
@@ -172,12 +180,16 @@ export default function QuranClient({ userProfile }: Props) {
   const [juzAwal,     setJuzAwal]     = useState('')
   const [juzAkhir,    setJuzAkhir]    = useState('')
 
-  // ── Fetch 114 surah dari alquran.cloud ────────────────────────────
+  // ── Fetch 114 surah dari alquran.cloud dengan tipe data aman ──────
   useEffect(() => {
     QuranService.getSurahs()
-      .then((data: Record<string, unknown>[]) => {
+      .then((data: unknown) => {
         if (!Array.isArray(data) || !data.length) return
-        const mapped: SurahItem[] = data.map((s: Record<string, unknown>) => ({
+        
+        // Melakukan casting aman setelah memastikan datanya berupa array
+        const typedData = data as ApiSurahItem[]
+        
+        const mapped: SurahItem[] = typedData.map((s) => ({
           id:   Number(s.number),
           name: String(s.englishName),
           type: String(s.revelationType) === 'Meccan' ? 'Makkiyah' : 'Madaniyah',
@@ -327,7 +339,6 @@ export default function QuranClient({ userProfile }: Props) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            {/* Checkbox sesuai desain */}
             <span className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
               filterMode === 'juz'
                 ? 'border-[#157a52] bg-[#157a52]'
