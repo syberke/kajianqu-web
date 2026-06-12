@@ -1,7 +1,7 @@
 'use client'
 
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { MoreVertical, Eye, Trash2, CheckCircle } from 'lucide-react'
+import { MoreVertical, Eye, Trash2 } from 'lucide-react'
 
 interface ActivityMenuProps {
   id: string
@@ -26,8 +26,14 @@ export default function ActivityMenu({ id, type }: ActivityMenuProps) {
 
   return (
     <div className="relative inline-block text-left">
+      {/* FIX: Menambahkan properti id statis unik dari database.
+        Ini menghentikan Headless UI menghasilkan ID acak yang memicu Hydration Error.
+      */}
       <Menu>
-        <MenuButton className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none">
+        <MenuButton 
+          id={`menu-button-${id}`}
+          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+        >
           <MoreVertical size={16} />
         </MenuButton>
 
