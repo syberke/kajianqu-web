@@ -10,12 +10,19 @@ export default async function DonasiPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Ambil data donasi
-  const { data: donations, error } = await supabaseAdmin
-    .from('donations')
-    .select('*')
-    .order('created_at', { ascending: false })
+const { data: donations, error } = await supabaseAdmin
+  .from('donations')
+  .select('*')
+  .order('created_at', { ascending: false })
 
+const { data: targetSetting } = await supabaseAdmin
+  .from('settings')
+  .select('value')
+  .eq('key', 'donation_target')
+  .single()
+
+const target =
+  Number(targetSetting?.value || 100000000)
   if (error) return <div className="p-8">Error: {error.message}</div>
 
   return (
@@ -25,7 +32,10 @@ export default async function DonasiPage() {
         <p className="text-sm text-gray-500 mt-1">Pantau arus kas masuk dan verifikasi sumbangan donatur.</p>
       </div>
 
-      <DonasiClient initialDonasi={donations || []} />
+ <DonasiClient
+  initialDonasi={donations || []}
+  donationTarget={target}
+/>
     </div>
   )
 }

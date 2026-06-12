@@ -10,8 +10,8 @@ export default function DetailDonasiClient({ donasi }: { donasi: any }) {
   const [loading, setLoading] = useState(false)
 
   // Menyesuaikan status sukses/gagal dengan kolom payment_status
-  const handleAction = async (newStatus: 'success' | 'failed') => {
-    const confirmMsg = newStatus === 'success' 
+  const handleAction = async (newStatus: 'paid' | 'failed') => {
+    const confirmMsg = newStatus === 'paid' 
       ? "Verifikasi donasi ini? Pastikan dana sudah masuk ke rekening." 
       : "Tolak donasi ini?"
     
@@ -24,7 +24,7 @@ export default function DetailDonasiClient({ donasi }: { donasi: any }) {
     if (res.error) {
       alert("Gagal: " + res.error)
     } else {
-      alert(`Donasi berhasil ${newStatus === 'success' ? 'diverifikasi' : 'ditolak'}`)
+      alert(`Donasi berhasil ${newStatus === 'paid' ? 'diverifikasi' : 'ditolak'}`)
       router.push('/dashboard/admin/donasi')
     }
   }
@@ -66,7 +66,13 @@ export default function DetailDonasiClient({ donasi }: { donasi: any }) {
                <InfoRow label="Nama Donatur" value={donasi.donor_name || 'Hamba Allah'} />
                <InfoRow label="Kategori" value={donasi.category} />
                {/* Mengambil nama bank dari hasil join payment_methods jika ada */}
-               <InfoRow label="Metode" value={donasi.payment_methods?.bank_name || 'Transfer Bank'} />
+             <InfoRow
+  label="Metode"
+  value={
+    donasi.donation_methods?.bank_name ||
+    'Transfer Bank'
+  }
+/>
                <InfoRow label="Tanggal" value={new Date(donasi.created_at).toLocaleString('id-ID')} />
                
                <hr className="border-gray-50 my-4" />
@@ -84,7 +90,7 @@ export default function DetailDonasiClient({ donasi }: { donasi: any }) {
             {donasi.payment_status === 'pending' ? (
               <div className="mt-8 grid grid-cols-2 gap-4">
                  <button 
-                   onClick={() => handleAction('success')}
+                   onClick={() => handleAction('paid')}
                    disabled={loading}
                    className="py-3 bg-[#1a4d2e] text-white rounded-xl font-bold text-sm hover:bg-[#064E3B] flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                  >
@@ -101,10 +107,20 @@ export default function DetailDonasiClient({ donasi }: { donasi: any }) {
               </div>
             ) : (
               <div className={`mt-8 p-4 rounded-xl text-center font-bold text-sm ${
-                donasi.payment_status === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-              }`}>
-                STATUS: {donasi.payment_status === 'success' ? 'SUDAH DIVERIFIKASI' : 'TRANSAKSI DITOLAK'}
-              </div>
+  donasi.payment_status === 'paid'
+    ? 'bg-green-50 text-green-600'
+    : donasi.payment_status === 'manual_review'
+    ? 'bg-yellow-50 text-yellow-600'
+    : 'bg-red-50 text-red-600'
+}`}>
+  STATUS: {
+    donasi.payment_status === 'paid'
+      ? 'SUDAH DIVERIFIKASI'
+      : donasi.payment_status === 'manual_review'
+      ? 'MENUNGGU REVIEW'
+      : 'TRANSAKSI DITOLAK'
+  }
+</div>
             )}
           </div>
 

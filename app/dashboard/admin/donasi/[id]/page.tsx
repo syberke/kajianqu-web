@@ -3,7 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import DetailDonasiClient from './DetailDonasiClient'
 
-export default async function DetailDonasiPage({ params }: { params: { id: string } }) {
+export default async function DetailDonasiPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+
+  const { id } = await params
+
   await requireRole('admin')
 
   const supabaseAdmin = createClient(
@@ -15,12 +22,21 @@ export default async function DetailDonasiPage({ params }: { params: { id: strin
     .from('donations')
     .select(`
       *,
-      payment_methods ( bank_name, account_name )
+      donation_methods (
+        bank_name,
+        account_name
+      )
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
-  if (error || !donasi) return notFound()
+  console.log('ID:', id)
+  console.log('ERROR:', error)
+  console.log('DONASI:', donasi)
+
+  if (error || !donasi) {
+    return notFound()
+  }
 
   return <DetailDonasiClient donasi={donasi} />
 }

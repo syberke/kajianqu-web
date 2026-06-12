@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { toggleVerifikasiAsatidz, hapusUser } from './action'
-import { ClipboardList, Users, Wallet, Filter, Eye, CheckCircle2, XCircle, Download, Check } from 'lucide-react'
+import { ClipboardList, Users, Wallet, Filter, Eye, CheckCircle2, AlertTriangle, Download, Check } from 'lucide-react'
 import Link from 'next/link'
+
 export type User = {
   id: string
   nama: string
@@ -13,11 +14,18 @@ export type User = {
   created_at: string
   asatidz_profiles?: {
     bidang: string
+    latar_belakang: string
     approved: boolean
   } | null
 }
 
-export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
+interface UserTableProps {
+  initialUsers: User[]
+  totalDonations: number
+  recentLogs: any[]
+}
+
+export default function UserTable({ initialUsers, totalDonations, recentLogs }: UserTableProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'terdaftar'>('pending')
 
@@ -32,25 +40,33 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
+  // Format Rupiah
+  const formatRupiah = (angka: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka)
+  }
+
   // --- HANDLERS ---
-  const handleApprove = async (userId: string, currentStatus: boolean) => {
-    if (!confirm('Yakin ingin memverifikasi Asatidz ini?')) return
+  const handleToggleApprove = async (userId: string, currentStatus: boolean) => {
+    const pesan = currentStatus 
+      ? 'Yakin ingin mencabut verifikasi Asatidz ini?' 
+      : 'Yakin ingin memverifikasi Asatidz ini?'
+    
+    if (!confirm(pesan)) return
+    
     setLoadingId(userId)
-    // Ingat: kita butuh dummy email jika action meminta email, pastikan action.ts sudah disesuaikan sebelumnya
     const res = await toggleVerifikasiAsatidz(userId, currentStatus) 
     setLoadingId(null)
-    if (res.error) alert(res.error)
+    if (res?.error) alert(res.error)
   }
 
   const handleReject = async (userId: string, nama: string) => {
-    if (!confirm(`Tolak dan hapus pendaftaran ${nama}?`)) return
+    if (!confirm(`Tolak dan hapus pendaftaran ${nama}? Tindakan ini permanen.`)) return
     setLoadingId(userId)
     const res = await hapusUser(userId)
     setLoadingId(null)
-    if (res.error) alert(res.error)
+    if (res?.error) alert(res.error)
   }
 
-  // Komponen Inisial Avatar
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
   }
@@ -58,7 +74,7 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
   return (
     <div className="space-y-6">
       
-      {/* 1. KARTU STATISTIK (Dinamis) */}
+      {/* 1. KARTU STATISTIK (Dinamis Nyata) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between h-28">
           <div className="flex justify-between items-start">
@@ -88,27 +104,25 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
           </div>
           <div>
             <p className="text-xs text-gray-500 font-medium mb-1">Donasi Terkumpul</p>
-            <p className="text-xl font-bold text-gray-800">Rp 100.000</p>
+            <p className="text-xl font-bold text-gray-800">{formatRupiah(totalDonations)}</p>
           </div>
         </div>
       </div>
 
       {/* 2. AREA TABEL & FILTER */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        
-        {/* TABS HEADER */}
         <div className="flex border-b border-gray-100 px-6 pt-2">
           <button 
             onClick={() => setActiveTab('pending')}
             className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'pending' ? 'border-[#064E3B] text-[#064E3B]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
           >
-            Pending Verification
+            Pending Verification ({pendingUsers.length})
           </button>
           <button 
             onClick={() => setActiveTab('terdaftar')}
             className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'terdaftar' ? 'border-[#064E3B] text-[#064E3B]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
           >
-            Asatidz Terdaftar
+            Asatidz Terdaftar ({registeredUsers.length})
           </button>
         </div>
 
@@ -146,9 +160,10 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4">
+                    <td className="py-4 max-w-xs">
                       <p className="font-semibold text-gray-800">{user.asatidz_profiles?.bidang || '-'}</p>
-                      <p className="text-xs text-gray-500 line-clamp-1">Data background statis</p>
+                      {/* FIX: Sekarang menampilkan data latar belakang riil */}
+                      <p className="text-xs text-gray-500 line-clamp-1">{user.asatidz_profiles?.latar_belakang || 'Tidak ada info latar belakang'}</p>
                     </td>
                     <td className="py-4 text-gray-500 text-xs">
                       {formatDate(user.created_at)}
@@ -158,32 +173,32 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
                         {activeTab === 'pending' ? (
                           <>
                             <button 
-                              onClick={() => handleApprove(user.id, false)}
+                              onClick={() => handleToggleApprove(user.id, false)}
                               disabled={loadingId === user.id}
                               className="px-4 py-1.5 bg-[#064E3B] text-white text-xs font-bold rounded hover:bg-[#1a4d2e] transition-colors disabled:opacity-50"
                             >
-                              Memeriksa
+                              {loadingId === user.id ? 'Memproses...' : 'Setujui'}
                             </button>
                             <button 
                               onClick={() => handleReject(user.id, user.nama)}
                               disabled={loadingId === user.id}
                               className="px-4 py-1.5 text-red-500 text-xs font-bold rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                             >
-                              Menolak
+                              Tolak
                             </button>
                           </>
                         ) : (
                           <button 
-                            onClick={() => handleApprove(user.id, true)}
+                            onClick={() => handleToggleApprove(user.id, true)}
                             disabled={loadingId === user.id}
                             className="px-4 py-1.5 text-red-500 text-xs font-bold border border-red-200 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                           >
-                            Cabut Verifikasi
+                            {loadingId === user.id ? 'Memproses...' : 'Cabut Verifikasi'}
                           </button>
                         )}
-                       <Link href={`/dashboard/admin/verifikasi/${user.id}`} className="p-1.5 text-gray-400 hover:text-gray-800 rounded-full hover:bg-gray-100 transition-colors block">
-  <Eye size={18} />
-</Link>
+                        <Link href={`/dashboard/admin/verifikasi/${user.id}`} className="p-1.5 text-gray-400 hover:text-gray-800 rounded-full hover:bg-gray-100 transition-colors block">
+                          <Eye size={18} />
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -200,27 +215,29 @@ export default function UserTable({ initialUsers }: { initialUsers: User[] }) {
         </div>
       </div>
 
-      {/* 3. WIDGET BAWAH (Recent & Pedoman) */}
+      {/* 3. WIDGET BAWAH (Data Log Nyata & Pedoman) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Verifikasi Terbaru */}
+        {/* Verifikasi Terbaru (Dinamis Berdasarkan activity_logs database) */}
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-gray-800 mb-4">Verifikasi Terbaru</h3>
+          <h3 className="font-bold text-gray-800 mb-4">Log Verifikasi Terbaru</h3>
           <div className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="mt-1 bg-green-100 text-green-600 rounded-full p-1"><CheckCircle2 size={16} /></div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">Ust. Hasan Alfatih approved</p>
-                <p className="text-xs text-gray-500">Diverifikasi oleh Admin • 2 jam yang lalu</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="mt-1 bg-red-100 text-red-500 rounded-full p-1"><XCircle size={16} /></div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">Application Rejected</p>
-                <p className="text-xs text-gray-500">Dokumen identitas tidak valid • 5 jam yang lalu</p>
-              </div>
-            </div>
+            {recentLogs.length > 0 ? (
+              recentLogs.map((log) => (
+                <div key={log.id} className="flex items-start gap-4">
+                  <div className={`mt-1 rounded-full p-1 ${log.status === 'success' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                    {log.status === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">{log.title}</p>
+                    <p className="text-xs text-gray-600">{log.description}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{formatDate(log.created_at)}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-400 py-4 text-center">Belum ada riwayat log aktivitas verifikasi.</p>
+            )}
           </div>
         </div>
 

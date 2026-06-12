@@ -4,8 +4,7 @@
 
 import type { Metadata } from "next"
 import { Poppins } from "next/font/google"
-import "./globals.css"
-
+import './globals.css'
 // Load Poppins dengan semua weight yang dipakai di Figma
 const poppins = Poppins({
   variable: "--font-poppins",

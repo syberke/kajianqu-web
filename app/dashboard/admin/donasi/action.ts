@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 
 export async function updateStatusDonasi(
   donasiId: string, 
-  status: 'success' | 'failed', 
+ status: 'paid' | 'failed',
   catatan?: string
 ) {
   const { error } = await supabaseAdmin
