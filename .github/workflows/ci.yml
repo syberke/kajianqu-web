@@ -37,9 +37,8 @@ jobs:
             'app/(public)/layout.tsx' \
             'app/(public)/quran/**/*.{ts,tsx}' \
             'app/quran-ai/**/*.{ts,tsx}' \
-            'app/(public)/keilmuan/[id]/**/*.{ts,tsx}' \
-            'app/(public)/kelas/live/[id]/**/*.{ts,tsx}' \
-            'app/(public)/kelas/tematik/[id]/**/*.{ts,tsx}' \
+            'app/(public)/keilmuan/**/*.{ts,tsx}' \
+            'app/(public)/kelas/**/*.{ts,tsx}' \
             'app/api/ai/**/*.ts' \
             'app/api/quran/**/*.ts' \
             'app/api/asatidz/materials/**/*.ts' \
