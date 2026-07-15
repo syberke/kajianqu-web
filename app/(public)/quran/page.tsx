@@ -1,7 +1,5 @@
-import QuranClient from './QuranClient'
-import { getQuranChapters } from '@/lib/quran-api'
+import { redirect } from 'next/navigation'
 
-export default async function QuranPage() {
-  const chapters = await getQuranChapters()
-  return <QuranClient chapters={chapters} />
+export default function LegacyQuranPage() {
+  redirect('/quran-ai')
 }
