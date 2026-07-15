@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+
+import { db } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 
 export async function getCurrentUserProfile() {
   const supabase = await createClient()
@@ -9,13 +11,23 @@ export async function getCurrentUserProfile() {
 
   if (!user) return null
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const profile = await db.profile.findUnique({
+    where: { id: user.id },
+    select: { id: true, nama: true, email: true, fotoUrl: true, role: true },
+  })
 
-  return { user, profile }
+  return {
+    user,
+    profile: profile
+      ? {
+          id: profile.id,
+          nama: profile.nama,
+          email: profile.email,
+          foto_url: profile.fotoUrl,
+          role: profile.role,
+        }
+      : null,
+  }
 }
 
 export async function requireAuth() {
@@ -29,13 +41,12 @@ export async function requireRole(role: 'siswa' | 'asatidz' | 'admin') {
 
   if (result.profile?.role === role) return result
 
-  // Redirect ke dashboard sesuai role yang dimiliki, bukan ke /login
   const roleRedirects: Record<string, string> = {
     admin: '/dashboard/admin',
     asatidz: '/dashboard/asatidz',
     siswa: '/dashboard/siswa',
   }
 
-  const destination = roleRedirects[result.profile?.role] ?? '/login'
+  const destination = roleRedirects[result.profile?.role ?? ''] ?? '/login'
   redirect(destination)
 }
