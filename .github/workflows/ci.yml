@@ -9,30 +9,88 @@ on:
 permissions:
   contents: read
 
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: test-service-key
+  DATABASE_URL: postgresql://user:password@localhost:5432/kajianqu
+  DIRECT_URL: postgresql://user:password@localhost:5432/kajianqu
+  GEMINI_API_KEY: test-gemini-key
+
 jobs:
-  validate:
+  lint-changed-scope:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: test-service-key
-      DATABASE_URL: postgresql://user:password@localhost:5432/kajianqu
-      DIRECT_URL: postgresql://user:password@localhost:5432/kajianqu
-      GEMINI_API_KEY: test-gemini-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install
-      - name: Lint
-        run: npm run lint
-      - name: Build
-        run: npm run build
-      - name: Audit obsolete and dummy markers
-        if: always()
+      - name: Lint migrated Quran and admin scope
         run: |
-          grep -RInE "dummy|GROQ|transcribe-quran|quran-data|QuranService|console\\.log" app components lib service supabase || true
+          npx eslint \
+            'app/(public)/layout.tsx' \
+            'app/(public)/quran/**/*.{ts,tsx}' \
+            'app/api/ai/**/*.ts' \
+            'app/api/quran/**/*.ts' \
+            'app/api/admin/notifications/**/*.ts' \
+            'app/api/admin/reports/**/*.ts' \
+            'app/api/admin/settings/**/*.ts' \
+            'app/dashboard/admin/layout.tsx' \
+            'app/dashboard/admin/settings/page.tsx' \
+            'app/sahabat-quran/page.tsx' \
+            'components/quran/**/*.{ts,tsx}' \
+            'lib/auth/**/*.ts' \
+            'lib/db.ts' \
+            'lib/gemini-live-config.ts' \
+            'lib/quran-alignment.ts' \
+            'lib/quran-api.ts' \
+            'service/quran-session.service.ts' \
+            'types/quran.ts'
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build application
+        run: npm run build
+
+  audit-quran-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject obsolete Quran transcription paths
+        run: |
+          if grep -RInE 'GROQ_API_KEY|transcribe-quran|useQuranRecorder|QuranSetoranClient' app components lib service supabase; then
+            echo 'Obsolete Quran transcription path is still referenced.'
+            exit 1
+          fi
+      - name: Reject legacy Quran data imports in active application code
+        run: |
+          if grep -RInE '@/lib/quran-data|@/lib/quran-service|QuranService' app components service; then
+            echo 'Active application code still references the legacy Quran data layer.'
+            exit 1
+          fi
+      - name: Reject dummy markers and console logs in new Quran flow
+        run: |
+          if grep -RInE 'dummy|console\.log' \
+            'app/(public)/quran' \
+            'app/api/ai' \
+            'app/api/quran' \
+            'components/quran' \
+            'lib/quran-alignment.ts' \
+            'lib/quran-api.ts' \
+            'service/quran-session.service.ts'; then
+            echo 'Dummy marker or console.log found in the active Quran flow.'
+            exit 1
+          fi
