@@ -37,8 +37,15 @@ jobs:
             'app/(public)/layout.tsx' \
             'app/(public)/quran/**/*.{ts,tsx}' \
             'app/quran-ai/**/*.{ts,tsx}' \
-            'app/(public)/keilmuan/**/*.{ts,tsx}' \
-            'app/(public)/kelas/**/*.{ts,tsx}' \
+            'app/(public)/keilmuan/page.tsx' \
+            'app/(public)/keilmuan/MateriClient.tsx' \
+            'app/(public)/keilmuan/[id]/page.tsx' \
+            'app/(public)/kelas/page.tsx' \
+            'app/(public)/kelas/KelasClient.tsx' \
+            'app/(public)/kelas/live/[id]/page.tsx' \
+            'app/(public)/kelas/live/[id]/KelasDetailClient.tsx' \
+            'app/(public)/kelas/tematik/[id]/page.tsx' \
+            'app/(public)/kelas/tematik/[id]/KelasDetailClient.tsx' \
             'app/api/ai/**/*.ts' \
             'app/api/quran/**/*.ts' \
             'app/api/asatidz/materials/**/*.ts' \
@@ -46,10 +53,12 @@ jobs:
             'app/api/admin/notifications/**/*.ts' \
             'app/api/admin/reports/**/*.ts' \
             'app/api/admin/settings/**/*.ts' \
+            'app/dashboard/admin/page.tsx' \
             'app/dashboard/admin/layout.tsx' \
             'app/dashboard/admin/settings/page.tsx' \
             'app/dashboard/asatidz/keilmuan/**/*.{ts,tsx}' \
             'app/dashboard/siswa/quran-ai/**/*.{ts,tsx}' \
+            'app/dashboard/siswa/sahabat-quran/page.tsx' \
             'app/sahabat-quran/page.tsx' \
             'components/layout/PublicNavbar.tsx' \
             'components/quran/**/*.{ts,tsx}' \
