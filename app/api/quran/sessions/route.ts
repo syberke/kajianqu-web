@@ -23,7 +23,7 @@ function isSessionPayload(payload: unknown): payload is SessionPayload {
   if (!payload || typeof payload !== 'object') return false
   const value = payload as Partial<SessionPayload>
   return (
-    (value.mode === 'ziyadah' || value.mode === 'murojaah') &&
+    (value.mode === 'murojaah' || value.mode === 'belajar') &&
     Number.isInteger(value.surahId) &&
     typeof value.surahName === 'string' &&
     Number.isInteger(value.ayahStart) &&
@@ -41,9 +41,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const payload = (await request.json().catch(() => null)) as unknown
   if (!isSessionPayload(payload)) {
@@ -95,9 +93,7 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(request.url)
   const rawLimit = Number(url.searchParams.get('limit') ?? 20)
