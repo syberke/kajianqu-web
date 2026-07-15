@@ -1,5 +1,6 @@
+import { notFound } from 'next/navigation'
 
-import { createClient } from '@/supabase/server'
+import { db } from '@/lib/db'
 import MateriDetailClient from './MateriDeltailClient'
 
 interface Props {
@@ -8,43 +9,47 @@ interface Props {
 
 export default async function MateriDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
+  const material = await db.material.findFirst({
+    where: { id, isPublished: true },
+    include: {
+      keilmuan: { select: { id: true, nama: true } },
+      asatidz: { select: { nama: true, fotoUrl: true } },
+      quizzes: {
+        include: {
+          questions: { orderBy: { orderNo: 'asc' } },
+        },
+      },
+    },
+  })
 
-  // Fetch materi + quiz + pertanyaan sekaligus
-  const { data: materi } = await supabase
-    .from('materials')
-    .select(`
-      *,
-      keilmuan:keilmuan_id(id, nama),
-      asatidz:asatidz_id(nama, foto_url),
-      quizzes(
-        id, title, description,
-        quiz_questions(id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, order_no)
-      )
-    `)
-    .eq('id', id)
-    .single()
+  if (!material) notFound()
 
-  // Kalau tidak ada data (misal id dummy), pakai fallback
-  const item = materi ?? {
-    id,
-    title: 'Hukumnya Tahlilan Bersama Ust. Adi Hidayat',
-    description: 'Tahlilan merupakan salah satu tradisi keagamaan yang sudah lama hidup dan berkembang di tengah masyarakat Muslim Indonesia. Kegiatan ini biasanya dilakukan dengan membaca kalimat tahlil (lā ilāha illallāh), dzikir, doa-doa, serta ayat-ayat Al-Qur\'an, yang sering kali dihadiahkan pahalanya untuk orang yang telah meninggal dunia. Selain itu, tahlilan juga menjadi sarana berkumpulnya keluarga, tetangga, dan masyarakat sekitar untuk saling mendoakan, mempererat silaturahmi, serta menguatkan rasa kebersamaan.',
-    youtube_url: null,
-    level: 'Mudah',
-    keilmuan: { nama: 'Akhlak' },
-    asatidz: { nama: 'Ust. Adi Hidayat' },
-    quizzes: [
-      {
-        id: 'quiz-1',
-        title: 'Kuis Seputar Topik',
-        description: 'Beberapa pertanyaan mengenai materi pada video',
-        quiz_questions: [
-          { id: 'q1', question: 'Hukum melaksanakan shalat lima waktu adalah...', option_a: 'Sunnah', option_b: 'Wajib', option_c: 'Mubah', option_d: 'Makruh', correct_answer: 'option_b', order_no: 1 },
-          { id: 'q2', question: 'Hukum melaksanakan shalat lima waktu adalah...', option_a: 'Sunnah', option_b: 'Wajib', option_c: 'Mubah', option_d: 'Makruh', correct_answer: 'option_b', order_no: 2 },
-        ]
-      }
-    ],
+  const item = {
+    id: material.id,
+    title: material.title,
+    description: material.description ?? material.summary,
+    youtube_url: material.youtubeUrl,
+    level: material.level,
+    keilmuan: material.keilmuan,
+    asatidz: material.asatidz
+      ? { nama: material.asatidz.nama, foto_url: material.asatidz.fotoUrl }
+      : null,
+    quizzes: material.quizzes.map((quiz) => ({
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      quiz_questions: quiz.questions.map((question) => ({
+        id: question.id,
+        question: question.question,
+        option_a: question.optionA,
+        option_b: question.optionB,
+        option_c: question.optionC,
+        option_d: question.optionD,
+        correct_answer: question.correctAnswer,
+        explanation: question.explanation,
+        order_no: question.orderNo,
+      })),
+    })),
   }
 
   return <MateriDetailClient materi={item} />
