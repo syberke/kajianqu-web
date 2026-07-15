@@ -30,7 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Lint migrated Quran and admin scope
+        shell: bash
         run: |
+          set +e
           npx eslint \
             'app/(public)/layout.tsx' \
             'app/(public)/quran/**/*.{ts,tsx}' \
@@ -49,7 +51,15 @@ jobs:
             'lib/quran-alignment.ts' \
             'lib/quran-api.ts' \
             'service/quran-session.service.ts' \
-            'types/quran.ts'
+            'types/quran.ts' 2>&1 | tee lint.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+      - name: Upload lint log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-log
+          path: lint.log
 
   build:
     runs-on: ubuntu-latest
@@ -63,34 +73,48 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build application
-        run: npm run build
+        shell: bash
+        run: |
+          set +e
+          npm run build 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
   audit-quran-flow:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject obsolete Quran transcription paths
+      - name: Audit active Quran flow
+        shell: bash
         run: |
-          if grep -RInE 'GROQ_API_KEY|transcribe-quran|useQuranRecorder|QuranSetoranClient' app components lib service supabase; then
-            echo 'Obsolete Quran transcription path is still referenced.'
-            exit 1
-          fi
-      - name: Reject legacy Quran data imports in active application code
-        run: |
-          if grep -RInE '@/lib/quran-data|@/lib/quran-service|QuranService' app components service; then
-            echo 'Active application code still references the legacy Quran data layer.'
-            exit 1
-          fi
-      - name: Reject dummy markers and console logs in new Quran flow
-        run: |
-          if grep -RInE 'dummy|console\.log' \
+          set +e
+          : > audit.log
+          grep -RInE 'GROQ_API_KEY|transcribe-quran|useQuranRecorder|QuranSetoranClient' app components lib service supabase >> audit.log
+          obsolete_status=$?
+          grep -RInE '@/lib/quran-data|@/lib/quran-service|QuranService' app components service >> audit.log
+          legacy_status=$?
+          grep -RInE 'dummy|console\.log' \
             'app/(public)/quran' \
             'app/api/ai' \
             'app/api/quran' \
             'components/quran' \
             'lib/quran-alignment.ts' \
             'lib/quran-api.ts' \
-            'service/quran-session.service.ts'; then
-            echo 'Dummy marker or console.log found in the active Quran flow.'
+            'service/quran-session.service.ts' >> audit.log
+          marker_status=$?
+          cat audit.log
+          if [ "$obsolete_status" -eq 0 ] || [ "$legacy_status" -eq 0 ] || [ "$marker_status" -eq 0 ]; then
             exit 1
           fi
+      - name: Upload audit log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-audit-log
+          path: audit.log
