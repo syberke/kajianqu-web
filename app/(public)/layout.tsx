@@ -1,28 +1,36 @@
-import { createClient } from '@/lib/supabase/server'
-import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
+import PublicNavbar from '@/components/layout/PublicNavbar'
+import { db } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  let userProfile = null
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('nama, email, foto_url, role')
-      .eq('id', user.id)
-      .single()
-    userProfile = profile
-  }
+  const userProfile = user
+    ? await db.profile.findUnique({
+        where: { id: user.id },
+        select: { nama: true, email: true, fotoUrl: true, role: true },
+      })
+    : null
 
   return (
     <>
-      <PublicNavbar userProfile={userProfile} />
-      <main>
-        {children}
-      </main>
+      <PublicNavbar
+        userProfile={
+          userProfile
+            ? {
+                nama: userProfile.nama,
+                email: userProfile.email,
+                foto_url: userProfile.fotoUrl,
+                role: userProfile.role,
+              }
+            : null
+        }
+      />
+      <main>{children}</main>
       <PublicFooter />
     </>
   )
