@@ -4,18 +4,16 @@ import { notFound } from 'next/navigation'
 import DetailDonasiClient from './DetailDonasiClient'
 
 export default async function DetailDonasiPage({
-  params
+  params,
 }: {
   params: Promise<{ id: string }>
 }) {
-
   const { id } = await params
-
   await requireRole('admin')
 
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
   const { data: donasi, error } = await supabaseAdmin
@@ -30,13 +28,6 @@ export default async function DetailDonasiPage({
     .eq('id', id)
     .single()
 
-  console.log('ID:', id)
-  console.log('ERROR:', error)
-  console.log('DONASI:', donasi)
-
-  if (error || !donasi) {
-    return notFound()
-  }
-
+  if (error || !donasi) notFound()
   return <DetailDonasiClient donasi={donasi} />
 }
