@@ -51,6 +51,7 @@ jobs:
             'app/dashboard/asatidz/keilmuan/**/*.{ts,tsx}' \
             'app/dashboard/siswa/quran-ai/**/*.{ts,tsx}' \
             'app/sahabat-quran/page.tsx' \
+            'components/layout/PublicNavbar.tsx' \
             'components/quran/**/*.{ts,tsx}' \
             'lib/auth/**/*.ts' \
             'lib/db.ts' \
@@ -119,10 +120,7 @@ jobs:
             'service/quran-session.service.ts' >> audit.log
           marker_status=$?
           grep -RInE "mode=['\"]ziyadah['\"]|Mode Ziyadah|QuranPracticeMode = 'ziyadah'|redirect\('/quran'\)|href=['\"]/quran['\"]" \
-            'app/quran-ai' \
-            'app/dashboard/siswa/quran-ai' \
-            'components/quran' \
-            'types/quran.ts' >> audit.log
+            app components --include='*.ts' --include='*.tsx' >> audit.log
           route_mode_status=$?
           cat audit.log
           if [ "$obsolete_status" -eq 0 ] || [ "$legacy_data_status" -eq 0 ] || [ "$marker_status" -eq 0 ] || [ "$route_mode_status" -eq 0 ]; then
