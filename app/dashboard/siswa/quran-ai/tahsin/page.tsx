@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function LegacyStudentQuranAiTahsinPage() {
-  redirect('/quran')
+  redirect('/quran-ai?mode=belajar')
 }
