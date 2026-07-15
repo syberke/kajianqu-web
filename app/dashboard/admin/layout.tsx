@@ -24,6 +24,11 @@ interface NotificationItem {
   created_at: string
 }
 
+interface AdminSidebarProps {
+  pathname: string
+  onNavigate: () => void
+}
+
 const NAV_ITEMS = [
   { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/admin/verifikasi', label: 'Verifikasi', icon: Users },
@@ -31,6 +36,49 @@ const NAV_ITEMS = [
   { href: '/dashboard/admin/donasi', label: 'Donasi', icon: Wallet },
   { href: '/dashboard/admin/reports', label: 'Reports', icon: Users },
 ] as const
+
+function adminNavClass(pathname: string, href: string) {
+  const active = pathname === href || (href !== '/dashboard/admin' && pathname.startsWith(href))
+  return `flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors ${
+    active ? 'bg-emerald-50 font-bold text-[#064E3B]' : 'text-slate-500 hover:bg-slate-50 hover:text-[#064E3B]'
+  }`
+}
+
+function AdminSidebar({ pathname, onNavigate }: AdminSidebarProps) {
+  return (
+    <>
+      <div>
+        <div className="flex h-20 items-center border-b border-slate-100 px-6">
+          <div>
+            <h1 className="text-xl font-bold text-[#064E3B]">Kajian<span className="text-emerald-500">Qu</span></h1>
+            <p className="text-xs text-slate-500">Admin Management</p>
+          </div>
+        </div>
+        <nav className="space-y-1 p-4">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} onClick={onNavigate} className={adminNavClass(pathname, item.href)}>
+                <Icon size={19} />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+      <div className="border-t border-slate-100 p-4">
+        <Link href="/dashboard/admin/settings" onClick={onNavigate} className={adminNavClass(pathname, '/dashboard/admin/settings')}>
+          <Settings size={19} />
+          Pengaturan
+        </Link>
+        <Link href="/logout" className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50">
+          <LogOut size={18} />
+          Keluar
+        </Link>
+      </div>
+    </>
+  )
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -78,46 +126,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setUnreadCount((count) => Math.max(0, count - 1))
   }
 
-  const navClass = (href: string) => {
-    const active = pathname === href || (href !== '/dashboard/admin' && pathname.startsWith(href))
-    return `flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors ${
-      active ? 'bg-emerald-50 font-bold text-[#064E3B]' : 'text-slate-500 hover:bg-slate-50 hover:text-[#064E3B]'
-    }`
-  }
-
-  const Sidebar = () => (
-    <>
-      <div>
-        <div className="flex h-20 items-center border-b border-slate-100 px-6">
-          <div>
-            <h1 className="text-xl font-bold text-[#064E3B]">Kajian<span className="text-emerald-500">Qu</span></h1>
-            <p className="text-xs text-slate-500">Admin Management</p>
-          </div>
-        </div>
-        <nav className="space-y-1 p-4">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon
-            return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={navClass(item.href)}><Icon size={19} />{item.label}</Link>
-          })}
-        </nav>
-      </div>
-      <div className="border-t border-slate-100 p-4">
-        <Link href="/dashboard/admin/settings" onClick={() => setMobileOpen(false)} className={navClass('/dashboard/admin/settings')}><Settings size={19} />Pengaturan</Link>
-        <Link href="/logout" className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50"><LogOut size={18} />Keluar</Link>
-      </div>
-    </>
-  )
-
   return (
     <div className="min-h-screen bg-[#f4f7f6]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-slate-200 bg-white lg:flex"><Sidebar /></aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-slate-200 bg-white lg:flex">
+        <AdminSidebar pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+      </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button aria-label="Tutup menu" className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex h-full w-72 flex-col justify-between bg-white shadow-2xl">
             <button type="button" aria-label="Tutup menu" onClick={() => setMobileOpen(false)} className="absolute right-4 top-5 rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X size={20} /></button>
-            <Sidebar />
+            <AdminSidebar pathname={pathname} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
