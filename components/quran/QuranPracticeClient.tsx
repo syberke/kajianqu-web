@@ -29,7 +29,7 @@ import type {
 type PracticeStatus = 'ready' | 'connecting' | 'recording' | 'processing' | 'done' | 'error'
 type LearningStep = 'listen' | 'read' | 'done'
 
-interface QuranPracticeClientProps {
+interface Props {
   mode: QuranPracticeMode
   chapter: QuranChapter
   verses: QuranVerse[]
@@ -46,7 +46,10 @@ const EMPTY_ALIGNMENT: AlignmentResult = {
   accuracy: 0,
 }
 
-const ANALYSIS_LABELS: Array<[keyof Pick<QuranRecitationAnalysis, 'makhraj' | 'tajwid' | 'mad' | 'ghunnah' | 'qalqalah' | 'waqafIbtida'>, string]> = [
+const ANALYSIS_LABELS: Array<[
+  keyof Pick<QuranRecitationAnalysis, 'makhraj' | 'tajwid' | 'mad' | 'ghunnah' | 'qalqalah' | 'waqafIbtida'>,
+  string,
+]> = [
   ['makhraj', 'Makhraj Huruf'],
   ['tajwid', 'Tajwid & Hukum Bacaan'],
   ['mad', 'Mad'],
@@ -55,19 +58,11 @@ const ANALYSIS_LABELS: Array<[keyof Pick<QuranRecitationAnalysis, 'makhraj' | 't
   ['waqafIbtida', 'Waqaf & Ibtida'],
 ]
 
-function stateClasses(state: WordState): string {
-  switch (state) {
-    case 'correct':
-      return 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200'
-    case 'wrong':
-      return 'text-red-700 bg-red-50 ring-1 ring-red-200 underline decoration-red-400 decoration-2'
-    case 'missed':
-      return 'text-amber-700 bg-amber-50 ring-1 ring-amber-200 decoration-amber-500 line-through'
-    case 'current':
-      return 'text-[#0c5d40] bg-emerald-100 ring-2 ring-[#1a7a53]/40'
-    default:
-      return 'text-slate-800'
-  }
+function wordClasses(state: WordState): string {
+  if (state === 'correct') return 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200'
+  if (state === 'wrong') return 'text-red-700 bg-red-50 ring-1 ring-red-200 underline decoration-red-400 decoration-2'
+  if (state === 'missed') return 'text-amber-700 bg-amber-50 ring-1 ring-amber-200 line-through decoration-amber-500'
+  return 'text-slate-800'
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -81,20 +76,16 @@ function CategoryCard({ title, feedback }: { title: string; feedback: Recitation
     <article className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <h4 className="font-black text-slate-900">{title}</h4>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{Math.round(feedback.score)}/100</span>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+          {Math.round(feedback.score)}/100
+        </span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-slate-600">{feedback.feedback}</p>
     </article>
   )
 }
 
-export default function QuranPracticeClient({
-  mode,
-  chapter,
-  verses,
-  ayahStart,
-  ayahEnd,
-}: QuranPracticeClientProps) {
+export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, ayahEnd }: Props) {
   const words = useMemo(() => verses.flatMap((verse) => verse.words), [verses])
   const expectedText = useMemo(() => verses.map((verse) => verse.textUthmani).join('\n'), [verses])
   const referenceAudioUrls = useMemo(
@@ -112,39 +103,27 @@ export default function QuranPracticeClient({
   const [hasListened, setHasListened] = useState(mode !== 'belajar')
   const [isPlayingReference, setIsPlayingReference] = useState(false)
   const [transcript, setTranscript] = useState('')
-  const [alignment, setAlignment] = useState<AlignmentResult>(() => ({
-    ...EMPTY_ALIGNMENT,
-    states: words.map(() => 'idle'),
-  }))
+  const [alignment, setAlignment] = useState<AlignmentResult>({ ...EMPTY_ALIGNMENT, states: words.map(() => 'idle') })
   const [analysis, setAnalysis] = useState<QuranRecitationAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [lastRecording, setLastRecording] = useState<RecitationRecordingResult | null>(null)
 
   const startedAtRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const playbackRunRef = useRef(0)
   const referenceAudioRef = useRef<HTMLAudioElement | null>(null)
-  const lastRecordingRef = useRef<RecitationRecordingResult | null>(null)
 
-  const handleTranscript = useCallback((nextTranscript: string) => {
-    setTranscript(nextTranscript)
-  }, [])
-
+  const handleTranscript = useCallback((nextTranscript: string) => setTranscript(nextTranscript), [])
   const handleLiveError = useCallback((message: string) => {
     setErrorMessage(message)
     setStatus('error')
   }, [])
 
-  const {
-    isRecording,
-    isConnecting,
-    startRecording,
-    stopRecording,
-    resetTranscript,
-  } = useGeminiLiveRecitation({
+  const { isRecording, isConnecting, startRecording, stopRecording, resetTranscript } = useGeminiLiveRecitation({
     onTranscript: handleTranscript,
     onError: handleLiveError,
   })
@@ -175,10 +154,22 @@ export default function QuranPracticeClient({
     try {
       for (const url of referenceAudioUrls) {
         if (playbackRunRef.current !== runId) return
+
         await new Promise<void>((resolve, reject) => {
           const audio = new Audio(url)
           referenceAudioRef.current = audio
-          audio.onended = () => resolve()
+
+          const finish = () => {
+            audio.onended = null
+            audio.onerror = null
+            audio.onpause = null
+            resolve()
+          }
+
+          audio.onended = finish
+          audio.onpause = () => {
+            if (playbackRunRef.current !== runId) finish()
+          }
           audio.onerror = () => reject(new Error('Audio contoh gagal diputar'))
           void audio.play().catch(reject)
         })
@@ -189,7 +180,9 @@ export default function QuranPracticeClient({
         setLearningStep('read')
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Audio contoh gagal diputar')
+      if (playbackRunRef.current === runId) {
+        setErrorMessage(error instanceof Error ? error.message : 'Audio contoh gagal diputar')
+      }
     } finally {
       if (playbackRunRef.current === runId) {
         referenceAudioRef.current = null
@@ -207,8 +200,8 @@ export default function QuranPracticeClient({
     setAnalysisError('')
     setErrorMessage('')
     setElapsedSeconds(0)
+    setLastRecording(null)
     setStatus('ready')
-    lastRecordingRef.current = null
   }, [clearTimer, resetTranscript, words])
 
   const resetAll = useCallback(() => {
@@ -231,6 +224,7 @@ export default function QuranPracticeClient({
     startedAtRef.current = Date.now()
     const started = await startRecording()
     if (!started) return
+
     setStatus('recording')
     timerRef.current = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
@@ -255,14 +249,12 @@ export default function QuranPracticeClient({
       formData.append('ayahStart', String(ayahStart))
       formData.append('ayahEnd', String(ayahEnd))
 
-      const response = await fetch('/api/quran/recitation-analysis', {
-        method: 'POST',
-        body: formData,
-      })
-      const payload = (await response.json().catch(() => null)) as { analysis?: QuranRecitationAnalysis; error?: string } | null
-      if (!response.ok || !payload?.analysis) {
-        throw new Error(payload?.error ?? 'Analisis audio gagal')
-      }
+      const response = await fetch('/api/quran/recitation-analysis', { method: 'POST', body: formData })
+      const payload = (await response.json().catch(() => null)) as {
+        analysis?: QuranRecitationAnalysis
+        error?: string
+      } | null
+      if (!response.ok || !payload?.analysis) throw new Error(payload?.error ?? 'Analisis audio gagal')
       setAnalysis(payload.analysis)
     } catch (error) {
       setAnalysisError(error instanceof Error ? error.message : 'Analisis audio gagal')
@@ -275,10 +267,10 @@ export default function QuranPracticeClient({
     clearTimer()
     setStatus('processing')
     const recording = await stopRecording()
-    lastRecordingRef.current = recording
     const finalAlignment = alignRecitation(words, recording.transcript, true)
     const durationSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1_000))
 
+    setLastRecording(recording)
     setTranscript(recording.transcript)
     setAlignment(finalAlignment)
     setElapsedSeconds(durationSeconds)
@@ -299,7 +291,6 @@ export default function QuranPracticeClient({
         transcript: recording.transcript,
       }),
     ]
-
     if (mode === 'belajar') tasks.push(requestAnalysis(recording))
     await Promise.allSettled(tasks)
 
@@ -308,11 +299,7 @@ export default function QuranPracticeClient({
     setStatus('done')
   }, [ayahEnd, ayahStart, chapter.id, chapter.nameSimple, clearTimer, mode, requestAnalysis, stopRecording, words])
 
-  const effectiveStatus: PracticeStatus = isConnecting
-    ? 'connecting'
-    : isRecording
-      ? 'recording'
-      : status
+  const effectiveStatus: PracticeStatus = isConnecting ? 'connecting' : isRecording ? 'recording' : status
   const isDone = effectiveStatus === 'done'
   const accuracy = Math.round(alignment.accuracy)
   const hideMurojaahText = mode === 'murojaah' && !isDone
@@ -329,16 +316,34 @@ export default function QuranPracticeClient({
 
         <section className="overflow-hidden rounded-3xl bg-[#145c42] text-white shadow-xl shadow-emerald-950/10">
           <div className="grid gap-6 px-6 py-7 md:grid-cols-[1fr_auto_1fr] md:items-center md:px-10">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200">Quran AI</p><h1 className="mt-2 text-3xl font-bold">{chapter.nameSimple}</h1><p className="mt-1 text-white/65">{chapter.translatedName}</p></div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200">Quran AI</p>
+              <h1 className="mt-2 text-3xl font-bold">{chapter.nameSimple}</h1>
+              <p className="mt-1 text-white/65">{chapter.translatedName}</p>
+            </div>
             <div className="text-center font-serif text-4xl md:text-5xl" dir="rtl">{chapter.nameArabic}</div>
-            <div className="md:text-right"><p className="font-semibold">Ayat {ayahStart} sampai {ayahEnd}</p><p className="mt-1 text-sm text-white/65">{mode === 'murojaah' ? 'Baca dari hafalan. Koreksi baru dibuka setelah selesai.' : 'Dengarkan bacaan, baca ulang, lalu lihat analisis audio bacaan.'}</p></div>
+            <div className="md:text-right">
+              <p className="font-semibold">Ayat {ayahStart} sampai {ayahEnd}</p>
+              <p className="mt-1 text-sm text-white/65">
+                {mode === 'murojaah'
+                  ? 'Baca dari hafalan. Koreksi baru dibuka setelah selesai.'
+                  : 'Dengarkan bacaan, baca ulang, lalu lihat analisis audio bacaan.'}
+              </p>
+            </div>
           </div>
         </section>
 
         {mode === 'belajar' && learningStep === 'listen' && (
           <section className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-              <div className="flex items-start gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#145c42] text-white"><Headphones size={23} /></span><div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Langkah 1 · Dengarkan</p><h2 className="mt-1 text-2xl font-black text-slate-900">Simak bacaan ayat sampai selesai</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">Tombol membaca baru aktif setelah audio contoh untuk seluruh rentang ayat selesai diputar.</p></div></div>
+              <div className="flex items-start gap-4">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#145c42] text-white"><Headphones size={23} /></span>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Langkah 1 · Dengarkan</p>
+                  <h2 className="mt-1 text-2xl font-black text-slate-900">Simak bacaan ayat sampai selesai</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">Tombol membaca baru aktif setelah audio contoh untuk seluruh rentang ayat selesai diputar.</p>
+                </div>
+              </div>
               <button type="button" onClick={() => isPlayingReference ? stopReference() : void playReference()} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#145c42] px-5 py-4 font-black text-white">
                 {isPlayingReference ? <><Pause size={19} /> Hentikan</> : <><Volume2 size={19} /> Dengarkan Bacaan</>}
               </button>
@@ -350,12 +355,22 @@ export default function QuranPracticeClient({
           <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8">
             <div className="mb-6 border-b border-slate-100 pb-5">
               <h2 className="text-lg font-bold text-slate-900">{hideMurojaahText ? 'Area Murojaah' : "Bacaan Al-Qur'an"}</h2>
-              <p className="mt-1 text-sm text-slate-500">{isDone ? 'Hijau benar, merah berbeda, kuning terlewat.' : mode === 'murojaah' ? 'Teks dan hasil koreksi disembunyikan sampai sesi selesai.' : 'Ikuti teks setelah selesai mendengarkan contoh bacaan.'}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {isDone
+                  ? 'Hijau benar, merah berbeda, kuning terlewat.'
+                  : mode === 'murojaah'
+                    ? 'Teks dan hasil koreksi disembunyikan sampai sesi selesai.'
+                    : 'Ikuti teks setelah selesai mendengarkan contoh bacaan.'}
+              </p>
             </div>
 
             {hideMurojaahText ? (
               <div className="grid min-h-[430px] place-items-center rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-8 text-center">
-                <div><BrainIcon /><h3 className="mt-5 text-2xl font-black text-slate-900">Baca dari hafalanmu</h3><p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">Quran AI tetap menyimak audio, tetapi transkrip, teks ayat, dan koreksi tidak ditampilkan selama Murojaah.</p></div>
+                <div>
+                  <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#145c42] text-4xl text-white">🧠</div>
+                  <h3 className="mt-5 text-2xl font-black text-slate-900">Baca dari hafalanmu</h3>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">Quran AI tetap menyimak audio, tetapi transkrip, teks ayat, dan koreksi tidak ditampilkan selama Murojaah.</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-7" dir="rtl">
@@ -364,8 +379,8 @@ export default function QuranPracticeClient({
                     <div className="text-right font-serif text-[2rem] leading-[2.25] sm:text-[2.2rem]">
                       {verse.words.map((word) => {
                         const globalIndex = wordIndexes.get(`${word.verseKey}:${word.wordIndex}`) ?? -1
-                        const state = isDone ? alignment.states[globalIndex] ?? 'idle' : 'idle'
-                        return <span key={`${verse.verseKey}-${word.wordIndex}`} className={`mx-0.5 inline-block rounded-lg px-1.5 transition ${stateClasses(state)}`}>{word.arabic}</span>
+                        const wordState = isDone ? alignment.states[globalIndex] ?? 'idle' : 'idle'
+                        return <span key={`${verse.verseKey}-${word.wordIndex}`} className={`mx-0.5 inline-block rounded-lg px-1.5 transition ${wordClasses(wordState)}`}>{word.arabic}</span>
                       })}
                       <span className="mr-2 inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-emerald-200 px-2 align-middle font-sans text-sm font-bold text-[#1a7a53]">{verse.number}</span>
                     </div>
@@ -384,7 +399,10 @@ export default function QuranPracticeClient({
 
           <aside className="space-y-4">
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-              <div className="flex items-center justify-between"><div><p className="text-sm font-semibold text-slate-500">Durasi bacaan</p><p className="mt-1 text-2xl font-black text-slate-900">{formatDuration(elapsedSeconds)}</p></div><div className={`h-3 w-3 rounded-full ${effectiveStatus === 'recording' ? 'animate-pulse bg-red-500' : 'bg-slate-200'}`} /></div>
+              <div className="flex items-center justify-between">
+                <div><p className="text-sm font-semibold text-slate-500">Durasi bacaan</p><p className="mt-1 text-2xl font-black text-slate-900">{formatDuration(elapsedSeconds)}</p></div>
+                <div className={`h-3 w-3 rounded-full ${effectiveStatus === 'recording' ? 'animate-pulse bg-red-500' : 'bg-slate-200'}`} />
+              </div>
 
               <div className="mt-5">
                 {mode === 'belajar' && !hasListened ? (
@@ -403,7 +421,6 @@ export default function QuranPracticeClient({
               {mode === 'belajar' && hasListened && effectiveStatus === 'ready' && (
                 <button type="button" onClick={() => void playReference()} disabled={isPlayingReference} className="mt-3 w-full text-sm font-bold text-emerald-700 hover:underline">{isPlayingReference ? 'Memutar ulang...' : 'Dengarkan contoh lagi'}</button>
               )}
-
               {errorMessage && <div className="mt-4 flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{errorMessage}</span></div>}
             </section>
 
@@ -416,13 +433,20 @@ export default function QuranPracticeClient({
               </section>
             )}
 
-            {isDone && <section className="rounded-3xl bg-emerald-950 p-5 text-white shadow-sm"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-300" size={21} /><div><p className="font-bold">Sesi selesai</p><p className="mt-1 text-sm leading-relaxed text-emerald-100/75">{isSaving ? 'Menyimpan hasil ke riwayat...' : 'Hasil lafaz dan urutan sudah diproses.'}</p></div></div></section>}
+            {isDone && (
+              <section className="rounded-3xl bg-emerald-950 p-5 text-white shadow-sm">
+                <div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-300" size={21} /><div><p className="font-bold">Sesi selesai</p><p className="mt-1 text-sm leading-relaxed text-emerald-100/75">{isSaving ? 'Menyimpan hasil ke riwayat...' : 'Hasil lafaz dan urutan sudah diproses.'}</p></div></div>
+              </section>
+            )}
           </aside>
         </div>
 
         {mode === 'belajar' && (isDone || isAnalyzing) && (
           <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Analisis Audio AI</p><h2 className="mt-2 text-2xl font-black text-slate-900">Makhraj, tajwid, dan hukum bacaan</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">Analisis ini membaca sinyal audio dan memberi indikasi latihan. Hasilnya bukan penilaian talaqqi final dan tetap perlu diverifikasi bersama guru atau ustadz.</p></div>{analysis && <span className="rounded-2xl bg-[#145c42] px-5 py-3 text-xl font-black text-white">{Math.round(analysis.overallScore)}/100</span>}</div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Analisis Audio AI</p><h2 className="mt-2 text-2xl font-black text-slate-900">Makhraj, tajwid, dan hukum bacaan</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">Analisis ini membaca sinyal audio dan memberi indikasi latihan. Hasilnya bukan penilaian talaqqi final dan tetap perlu diverifikasi bersama guru atau ustadz.</p></div>
+              {analysis && <span className="rounded-2xl bg-[#145c42] px-5 py-3 text-xl font-black text-white">{Math.round(analysis.overallScore)}/100</span>}
+            </div>
 
             {isAnalyzing ? (
               <div className="mt-8 flex items-center justify-center gap-3 rounded-2xl bg-slate-50 py-12 font-bold text-slate-600"><LoaderCircle className="animate-spin" /> Gemini sedang menganalisis rekaman penuh...</div>
@@ -430,18 +454,39 @@ export default function QuranPracticeClient({
               <>
                 <div className="mt-6 rounded-2xl bg-emerald-50 p-5 text-sm leading-relaxed text-emerald-900">{analysis.summary}</div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{ANALYSIS_LABELS.map(([key, title]) => <CategoryCard key={key} title={title} feedback={analysis[key]} />)}</div>
-                <div className="mt-7"><h3 className="text-lg font-black text-slate-900">Temuan yang perlu dilatih</h3>{analysis.issues.length === 0 ? <p className="mt-4 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">Tidak ada temuan audio spesifik yang cukup jelas untuk ditandai.</p> : <div className="mt-4 space-y-3">{analysis.issues.map((issue, index) => <article key={`${issue.category}-${index}`} className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">{issue.category.replace('_', ' ')}</span><span className={`rounded-full px-3 py-1 text-xs font-black ${issue.severity === 'utama' ? 'bg-red-50 text-red-700' : issue.severity === 'sedang' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{issue.severity}</span>{issue.ayahNumber && <span className="text-xs text-slate-400">Ayat {issue.ayahNumber}</span>}</div>{issue.word && <p className="mt-3 text-right font-serif text-2xl text-slate-900" dir="rtl">{issue.word}</p>}<p className="mt-3 text-sm leading-relaxed text-slate-700"><strong>Terdengar:</strong> {issue.observation}</p><p className="mt-2 text-sm leading-relaxed text-emerald-800"><strong>Latihan:</strong> {issue.suggestion}</p></article>)}</div>}</div>
+                <div className="mt-7">
+                  <h3 className="text-lg font-black text-slate-900">Temuan yang perlu dilatih</h3>
+                  {analysis.issues.length === 0 ? (
+                    <p className="mt-4 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">Tidak ada temuan audio spesifik yang cukup jelas untuk ditandai.</p>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {analysis.issues.map((issue, index) => (
+                        <article key={`${issue.category}-${index}`} className="rounded-2xl border border-slate-200 p-5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">{issue.category.replace('_', ' ')}</span>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ${issue.severity === 'utama' ? 'bg-red-50 text-red-700' : issue.severity === 'sedang' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{issue.severity}</span>
+                            {issue.ayahNumber && <span className="text-xs text-slate-400">Ayat {issue.ayahNumber}</span>}
+                          </div>
+                          {issue.word && <p className="mt-3 text-right font-serif text-2xl text-slate-900" dir="rtl">{issue.word}</p>}
+                          <p className="mt-3 text-sm leading-relaxed text-slate-700"><strong>Terdengar:</strong> {issue.observation}</p>
+                          <p className="mt-2 text-sm leading-relaxed text-emerald-800"><strong>Latihan:</strong> {issue.suggestion}</p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
-              <div className="mt-6 rounded-2xl bg-red-50 p-5 text-sm text-red-700"><p>{analysisError || 'Analisis audio belum tersedia.'}</p>{lastRecordingRef.current?.audioBlob && <button type="button" onClick={() => void requestAnalysis(lastRecordingRef.current as RecitationRecordingResult)} className="mt-3 font-black underline">Coba analisis ulang</button>}</div>
+              <div className="mt-6 rounded-2xl bg-red-50 p-5 text-sm text-red-700">
+                <p>{analysisError || 'Analisis audio belum tersedia.'}</p>
+                {lastRecording?.audioBlob && (
+                  <button type="button" onClick={() => void requestAnalysis(lastRecording)} className="mt-3 font-black underline">Coba analisis ulang</button>
+                )}
+              </div>
             )}
           </section>
         )}
       </div>
     </div>
   )
-}
-
-function BrainIcon() {
-  return <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#145c42] text-4xl text-white">🧠</div>
 }
