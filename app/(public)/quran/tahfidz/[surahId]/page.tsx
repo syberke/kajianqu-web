@@ -8,8 +8,8 @@ interface Props {
 export default async function LegacyTahfidzPage({ params, searchParams }: Props) {
   const { surahId } = await params
   const query = await searchParams
-  const paramsString = new URLSearchParams()
-  if (query.start) paramsString.set('start', query.start)
-  if (query.end) paramsString.set('end', query.end)
-  redirect(`/quran/ziyadah/${surahId}${paramsString.size ? `?${paramsString.toString()}` : ''}`)
+  const search = new URLSearchParams()
+  if (query.start) search.set('start', query.start)
+  if (query.end) search.set('end', query.end)
+  redirect(`/quran-ai/murojaah/${surahId}${search.size ? `?${search.toString()}` : ''}`)
 }
