@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install
-      - name: Lint migrated Quran and admin scope
+      - name: Lint migrated Quran admin and Asatidz scope
         shell: bash
         run: |
           set +e
@@ -38,11 +38,14 @@ jobs:
             'app/(public)/quran/**/*.{ts,tsx}' \
             'app/api/ai/**/*.ts' \
             'app/api/quran/**/*.ts' \
+            'app/api/asatidz/materials/**/*.ts' \
+            'app/api/keilmuan/**/*.ts' \
             'app/api/admin/notifications/**/*.ts' \
             'app/api/admin/reports/**/*.ts' \
             'app/api/admin/settings/**/*.ts' \
             'app/dashboard/admin/layout.tsx' \
             'app/dashboard/admin/settings/page.tsx' \
+            'app/dashboard/asatidz/keilmuan/**/*.{ts,tsx}' \
             'app/sahabat-quran/page.tsx' \
             'components/quran/**/*.{ts,tsx}' \
             'lib/auth/**/*.ts' \
@@ -50,6 +53,7 @@ jobs:
             'lib/gemini-live-config.ts' \
             'lib/quran-alignment.ts' \
             'lib/quran-api.ts' \
+            'service/materi.ts' \
             'service/quran-session.service.ts' \
             'types/quran.ts' 2>&1 | tee lint.log
           status=${PIPESTATUS[0]}
@@ -118,3 +122,19 @@ jobs:
         with:
           name: quran-audit-log
           path: audit.log
+
+  audit-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect application page audit
+        shell: bash
+        run: |
+          find app -name 'page.tsx' -print | sort > page-audit.log
+          printf '\n--- MARKERS ---\n' >> page-audit.log
+          grep -RInE 'dummy|TODO|console\.log|placeholder|hardcoded' app --include='page.tsx' >> page-audit.log || true
+      - name: Upload page audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: page-audit-log
+          path: page-audit.log
