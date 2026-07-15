@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from 'react'
 
+import { GEMINI_LIVE_SYSTEM_INSTRUCTION } from '@/lib/gemini-live-config'
+
 interface GeminiLiveTokenResponse {
   token: string
   model: string
@@ -125,7 +127,7 @@ export function useGeminiLiveRecitation({
   }, [cleanupAudio])
 
   const startRecording = useCallback(async () => {
-    if (isRecording || isConnecting) return
+    if (isRecording || isConnecting) return false
     setIsConnecting(true)
     transcriptRef.current = ''
     onTranscript('')
@@ -156,12 +158,7 @@ export function useGeminiLiveRecitation({
                 responseModalities: ['AUDIO'],
                 inputAudioTranscription: {},
                 systemInstruction: {
-                  parts: [
-                    {
-                      text:
-                        'Transcribe the incoming Quran recitation in Arabic script as faithfully as possible. Do not coach, answer, greet, or speak to the reader. Input transcription is used by the application for live verse alignment.',
-                    },
-                  ],
+                  parts: [{ text: GEMINI_LIVE_SYSTEM_INSTRUCTION }],
                 },
               },
             }),
@@ -236,6 +233,7 @@ export function useGeminiLiveRecitation({
       processor.connect(audioContext.destination)
       setIsConnecting(false)
       setIsRecording(true)
+      return true
     } catch (error) {
       await cleanupAudio()
       socketRef.current?.close()
@@ -249,6 +247,7 @@ export function useGeminiLiveRecitation({
       } else {
         onError(message)
       }
+      return false
     }
   }, [cleanupAudio, completeStop, isConnecting, isRecording, onError, onTranscript])
 
