@@ -1,5 +1,5 @@
-export type QuranPracticeMode = 'ziyadah' | 'murojaah'
-export type LegacyQuranMode = 'tahfidz' | 'tahsin'
+export type QuranPracticeMode = 'murojaah' | 'belajar'
+export type LegacyQuranMode = 'tahfidz' | 'tahsin' | 'ziyadah'
 export type QuranMode = QuranPracticeMode | LegacyQuranMode
 
 export type WordState = 'idle' | 'current' | 'correct' | 'wrong' | 'missed'
@@ -33,7 +33,6 @@ export interface QuranVerse {
   words: QuranWord[]
 }
 
-// Legacy shape retained while old routes redirect to the new practice flow.
 export interface QuranAyah {
   number: number
   arabic: string[]
@@ -86,6 +85,42 @@ export interface SessionHistory {
   correctWords: number
   totalWords: number
   createdAt: string
+}
+
+export type QuranRecitationCategory =
+  | 'makhraj'
+  | 'tajwid'
+  | 'mad'
+  | 'ghunnah'
+  | 'qalqalah'
+  | 'waqaf_ibtida'
+  | 'hukum_bacaan'
+  | 'lafaz'
+
+export interface RecitationCategoryFeedback {
+  score: number
+  feedback: string
+}
+
+export interface QuranRecitationIssue {
+  ayahNumber?: number
+  word?: string
+  category: QuranRecitationCategory
+  severity: 'ringan' | 'sedang' | 'utama'
+  observation: string
+  suggestion: string
+}
+
+export interface QuranRecitationAnalysis {
+  overallScore: number
+  summary: string
+  makhraj: RecitationCategoryFeedback
+  tajwid: RecitationCategoryFeedback
+  mad: RecitationCategoryFeedback
+  ghunnah: RecitationCategoryFeedback
+  qalqalah: RecitationCategoryFeedback
+  waqafIbtida: RecitationCategoryFeedback
+  issues: QuranRecitationIssue[]
 }
 
 export interface TranscriptResult {
