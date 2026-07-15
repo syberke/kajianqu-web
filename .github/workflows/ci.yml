@@ -36,6 +36,9 @@ jobs:
           npx eslint \
             'app/(public)/layout.tsx' \
             'app/(public)/quran/**/*.{ts,tsx}' \
+            'app/(public)/keilmuan/[id]/**/*.{ts,tsx}' \
+            'app/(public)/kelas/live/[id]/**/*.{ts,tsx}' \
+            'app/(public)/kelas/tematik/[id]/**/*.{ts,tsx}' \
             'app/api/ai/**/*.ts' \
             'app/api/quran/**/*.ts' \
             'app/api/asatidz/materials/**/*.ts' \
@@ -131,10 +134,25 @@ jobs:
         shell: bash
         run: |
           find app -name 'page.tsx' -print | sort > page-audit.log
-          printf '\n--- MARKERS ---\n' >> page-audit.log
-          grep -RInE 'dummy|TODO|console\.log|placeholder|hardcoded' app --include='page.tsx' >> page-audit.log || true
+          printf '\n--- ACTIONABLE MARKERS ---\n' >> page-audit.log
+          grep -RInE 'dummy|TODO|console\.log|hardcoded' app --include='page.tsx' >> page-audit.log || true
       - name: Upload page audit
         uses: actions/upload-artifact@v4
         with:
           name: page-audit-log
           path: page-audit.log
+
+  audit-data-layer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect direct Supabase database access
+        shell: bash
+        run: |
+          printf '%s\n' 'Direct Supabase database access still to migrate:' > data-layer-audit.log
+          grep -RInE '\.from\(['"'"']|\.rpc\(['"'"']' app components lib service --include='*.ts' --include='*.tsx' >> data-layer-audit.log || true
+      - name: Upload data layer audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-layer-audit-log
+          path: data-layer-audit.log
