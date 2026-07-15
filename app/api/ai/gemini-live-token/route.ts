@@ -1,11 +1,8 @@
 import { GoogleGenAI, Modality } from '@google/genai'
 import { NextResponse } from 'next/server'
 
+import { GEMINI_LIVE_MODEL, GEMINI_LIVE_SYSTEM_INSTRUCTION } from '@/lib/gemini-live-config'
 import { createClient } from '@/lib/supabase/server'
-
-const GEMINI_LIVE_MODEL = 'gemini-3.1-flash-live-preview'
-const SYSTEM_INSTRUCTION =
-  'Transcribe incoming Quran recitation in Arabic script faithfully. Do not greet, coach, answer, or speak. The application performs canonical Quran verse alignment from the input transcription.'
 
 export async function POST() {
   const supabase = await createClient()
@@ -47,7 +44,7 @@ export async function POST() {
             responseModalities: [Modality.AUDIO],
             inputAudioTranscription: {},
             systemInstruction: {
-              parts: [{ text: SYSTEM_INSTRUCTION }],
+              parts: [{ text: GEMINI_LIVE_SYSTEM_INSTRUCTION }],
             },
           },
         },
