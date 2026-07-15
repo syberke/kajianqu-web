@@ -10,65 +10,70 @@ const LEVELS: Record<string, string> = {
   mudah: 'bg-emerald-500', menengah: 'bg-orange-400', sulit: 'bg-red-500'
 }
 
-// 1. Define explicit TypeScript interfaces for safety
 interface Keilmuan {
-  id?: any;
-  nama: string;
+  id?: string
+  nama: string
 }
 
 interface MateriItem {
-  id: string;
-  slug: string;
-  title: string;
-  keilmuan: Keilmuan;
-  summary?: string;
-  level: 'mudah' | 'menengah' | 'sulit' | string;
-  image?: string;
+  id: string
+  slug: string
+  title: string
+  keilmuan: Keilmuan | null
+  summary?: string | null
+  description?: string | null
+  youtube_url?: string | null
+  thumbnail_url?: string | null
+  asatidz?: { nama: string | null; foto_url?: string | null } | null
+  type?: string | null
+  level: 'mudah' | 'menengah' | 'sulit' | string | null
+  image?: string
 }
 
 interface MateriClientProps {
-  initialMaterials: MateriItem[];
-  keilmuanList: Keilmuan[];
+  initialMaterials: MateriItem[]
+  keilmuanList: Keilmuan[]
 }
 
-// 2. Accept props from the server page component
 export default function MateriClient({ initialMaterials, keilmuanList }: MateriClientProps) {
-  const [search, setSearch]         = useState('')
+  const [search, setSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTopic, setTopic]   = useState('')
-  
-  // 3. Initialize state with the initialMaterials passed from the parent server component
-  const [materi, setMateri]         = useState<MateriItem[]>(initialMaterials || [])
-  const [loading, setLoading]       = useState(false)
+  const [selectedTopic, setTopic] = useState('')
+  const [materi, setMateri] = useState<MateriItem[]>(initialMaterials || [])
+  const [loading, setLoading] = useState(false)
 
-  // Fetch updates client-side if needed, fallback to initial props if service fails
   useEffect(() => {
     setLoading(true)
     MateriService.getAllMaterials()
-      .then(data => { 
-        if (data?.length) setMateri(data) 
+      .then((data) => {
+        if (data?.length) setMateri(data as MateriItem[])
       })
-      .catch((err) => console.error("Failed to fetch material list:", err))
+      .catch(() => undefined)
       .finally(() => setLoading(false))
   }, [])
 
   const handleSearch = () => setSearchQuery(search)
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') handleSearch()
+  }
 
-  const filtered = useMemo(() =>
-    materi.filter(m => {
-      const matchSearch = !searchQuery || 
-        m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        m.summary?.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchTopic  = !selectedTopic || m.keilmuan?.nama === selectedTopic
-      return matchSearch && matchTopic
-    }), [materi, searchQuery, selectedTopic]
+  const filtered = useMemo(
+    () =>
+      materi.filter((item) => {
+        const matchSearch =
+          !searchQuery ||
+          item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchTopic = !selectedTopic || item.keilmuan?.nama === selectedTopic
+        return matchSearch && matchTopic
+      }),
+    [materi, searchQuery, selectedTopic],
   )
+
+  const topics = keilmuanList.length > 0 ? keilmuanList.map((item) => item.nama) : TOPICS
 
   return (
     <div className="bg-white min-h-screen font-['Poppins',sans-serif]">
-
-      {/* HERO */}
       <section className="bg-[#157a52] pt-28 pb-20 px-6 text-center relative overflow-hidden">
         <div className="relative z-10 max-w-3xl mx-auto space-y-4">
           <p className="text-[#d3ad0f] text-sm font-bold uppercase tracking-widest">Program Keilmuan</p>
@@ -79,7 +84,6 @@ export default function MateriClient({ initialMaterials, keilmuanList }: MateriC
         </div>
       </section>
 
-      {/* SEARCH BAR */}
       <div className="max-w-[900px] mx-auto px-6 -mt-6 relative z-10 mb-10">
         <div className="bg-white rounded-[24px] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.10)] border border-gray-100">
           <div className="flex gap-3">
@@ -89,98 +93,59 @@ export default function MateriClient({ initialMaterials, keilmuanList }: MateriC
                 type="text"
                 placeholder="Masukan nama kitab..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-transparent rounded-[16px] text-sm font-medium focus:outline-none focus:border-[#157a52] focus:ring-2 focus:ring-[#157a52]/10 transition-all"
+                className="w-full h-12 pl-12 pr-4 bg-[#f7fbff] rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#157a52]"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="px-8 py-4 bg-[#157a52] text-white font-bold rounded-[16px] hover:bg-[#0c2e1c] transition-all text-sm shadow-lg shadow-[#157a52]/20 active:scale-95"
-            >
+            <button type="button" onClick={handleSearch} className="px-8 bg-[#157a52] text-white rounded-xl font-semibold hover:bg-[#10633f] transition-colors">
               Cari
             </button>
           </div>
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="max-w-[1200px] mx-auto px-6 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-
-          {/* SIDEBAR TOPIK */}
-          <div className="lg:col-span-1">
-            <div className="bg-white border border-gray-100 rounded-[24px] p-6 shadow-sm sticky top-28">
-              <h3 className="font-bold text-[#0c1421] text-lg mb-4">Topik</h3>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setTopic('')}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition-all text-left ${!selectedTopic ? 'bg-[#e8f5ee] text-[#157a52] font-bold' : 'text-gray-500 hover:bg-gray-50'}`}
-                >
-                  <span className={`w-4 h-4 border-2 rounded flex-shrink-0 ${!selectedTopic ? 'border-[#157a52] bg-[#157a52]' : 'border-gray-300'}`} />
-                  Semua
-                </button>
-                
-                {/* Dynamically fallback to keilmuanList props if TOPICS is not needed */}
-                {TOPICS.map(t => (
-                  <button key={t} onClick={() => setTopic(t === selectedTopic ? '' : t)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition-all text-left ${selectedTopic === t ? 'bg-[#e8f5ee] text-[#157a52] font-bold' : 'text-gray-500 hover:bg-gray-50'}`}
-                  >
-                    <span className={`w-4 h-4 border-2 rounded flex-shrink-0 ${selectedTopic === t ? 'border-[#157a52] bg-[#157a52]' : 'border-gray-300'}`} />
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* MATERI GRID */}
-          <div className="lg:col-span-3">
-            {loading && filtered.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-[#157a52]" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-gray-400 font-bold text-lg">Materi tidak ditemukan</p>
-                <p className="text-gray-300 text-sm mt-2">Coba kata kunci lain</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map(m => (
-                  <div key={m.id} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all group">
-                    <div className="relative h-48 overflow-hidden bg-gray-50">
-                      <img src={m.image || 'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=500'} alt={m.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      {m.level && (
-                        <span className={`absolute top-3 right-3 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg capitalize ${LEVELS[m.level] || 'bg-gray-500'}`}>
-                          {m.level.charAt(0).toUpperCase() + m.level.slice(1)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-5">
-                      <h4 className="font-bold text-gray-800 text-base mb-2 line-clamp-2 group-hover:text-[#157a52] transition-colors">{m.title}</h4>
-                      <p className="text-xs text-gray-500 mb-1">{m.keilmuan?.nama}</p>
-                      {m.summary && (
-                        <div className="flex items-center gap-1 text-xs text-gray-400 mb-4">
-                          <span>📖</span>
-                          <span>{m.summary}</span>
-                        </div>
-                      )}
-                      <Link href={`/keilmuan/${m.slug || m.id}`}
-                        className="w-full block text-center py-2.5 border-2 border-[#157a52] text-[#157a52] rounded-xl text-sm font-bold hover:bg-[#157a52] hover:text-white transition-all"
-                      >
-                        Tonton Sekarang ›
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <main className="max-w-[1200px] mx-auto px-6 pb-20">
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button type="button" onClick={() => setTopic('')} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${!selectedTopic ? 'bg-[#157a52] text-white' : 'bg-gray-100 text-gray-500 hover:bg-emerald-50'}`}>
+            Semua
+          </button>
+          {topics.map((topic) => (
+            <button key={topic} type="button" onClick={() => setTopic(topic)} className={`px-4 py-2 rounded-full text-sm font-semibold transition ${selectedTopic === topic ? 'bg-[#157a52] text-white' : 'bg-gray-100 text-gray-500 hover:bg-emerald-50'}`}>
+              {topic}
+            </button>
+          ))}
         </div>
-      </div>
+
+        {loading && materi.length === 0 ? (
+          <div className="py-20 text-center text-gray-400">Memuat materi...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center text-gray-400">Materi tidak ditemukan.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((item) => (
+              <Link key={item.id} href={`/keilmuan/${item.id}`} className="group rounded-[24px] border border-gray-100 overflow-hidden bg-white hover:shadow-xl transition-all">
+                <div className="h-44 bg-gradient-to-br from-emerald-100 to-emerald-50 overflow-hidden">
+                  {item.thumbnail_url || item.image ? (
+                    <img src={item.thumbnail_url || item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="h-full grid place-items-center text-5xl">📖</div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <span className="text-xs font-bold text-[#157a52]">{item.keilmuan?.nama || 'Kajian Umum'}</span>
+                    {item.level && <span className="flex items-center gap-1.5 text-[11px] text-gray-400"><span className={`w-2 h-2 rounded-full ${LEVELS[item.level] || 'bg-gray-300'}`} />{item.level}</span>}
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-[#157a52] transition-colors">{item.title}</h2>
+                  <p className="mt-2 text-sm text-gray-500 line-clamp-3 leading-relaxed">{item.summary || item.description || 'Ringkasan materi belum tersedia.'}</p>
+                  <p className="mt-4 text-xs text-gray-400">{item.asatidz?.nama || 'Asatidz KajianQu'}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   )
 }
