@@ -29,13 +29,14 @@ jobs:
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install
-      - name: Lint migrated Quran admin and Asatidz scope
+      - name: Lint migrated Quran AI and application scope
         shell: bash
         run: |
           set +e
           npx eslint \
             'app/(public)/layout.tsx' \
             'app/(public)/quran/**/*.{ts,tsx}' \
+            'app/quran-ai/**/*.{ts,tsx}' \
             'app/(public)/keilmuan/[id]/**/*.{ts,tsx}' \
             'app/(public)/kelas/live/[id]/**/*.{ts,tsx}' \
             'app/(public)/kelas/tematik/[id]/**/*.{ts,tsx}' \
@@ -49,6 +50,7 @@ jobs:
             'app/dashboard/admin/layout.tsx' \
             'app/dashboard/admin/settings/page.tsx' \
             'app/dashboard/asatidz/keilmuan/**/*.{ts,tsx}' \
+            'app/dashboard/siswa/quran-ai/**/*.{ts,tsx}' \
             'app/sahabat-quran/page.tsx' \
             'components/quran/**/*.{ts,tsx}' \
             'lib/auth/**/*.ts' \
@@ -79,6 +81,8 @@ jobs:
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install
+      - name: Validate Prisma schema
+        run: npx prisma validate
       - name: Build application
         shell: bash
         run: |
@@ -97,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Audit active Quran flow
+      - name: Audit canonical Quran AI flow
         shell: bash
         run: |
           set +e
@@ -105,9 +109,9 @@ jobs:
           grep -RInE 'GROQ_API_KEY|transcribe-quran|useQuranRecorder|QuranSetoranClient' app components lib service supabase >> audit.log
           obsolete_status=$?
           grep -RInE '@/lib/quran-data|@/lib/quran-service|QuranService' app components service >> audit.log
-          legacy_status=$?
+          legacy_data_status=$?
           grep -RInE 'dummy|console\.log' \
-            'app/(public)/quran' \
+            'app/quran-ai' \
             'app/api/ai' \
             'app/api/quran' \
             'components/quran' \
@@ -115,8 +119,14 @@ jobs:
             'lib/quran-api.ts' \
             'service/quran-session.service.ts' >> audit.log
           marker_status=$?
+          grep -RInE "mode=['\"]ziyadah['\"]|Mode Ziyadah|QuranPracticeMode = 'ziyadah'|redirect\('/quran'\)|href=['\"]/quran['\"]" \
+            'app/quran-ai' \
+            'app/dashboard/siswa/quran-ai' \
+            'components/quran' \
+            'types/quran.ts' >> audit.log
+          route_mode_status=$?
           cat audit.log
-          if [ "$obsolete_status" -eq 0 ] || [ "$legacy_status" -eq 0 ] || [ "$marker_status" -eq 0 ]; then
+          if [ "$obsolete_status" -eq 0 ] || [ "$legacy_data_status" -eq 0 ] || [ "$marker_status" -eq 0 ] || [ "$route_mode_status" -eq 0 ]; then
             exit 1
           fi
       - name: Upload audit log
