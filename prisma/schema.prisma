@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Profile {
+  id      String  @id @db.Uuid
+  nama    String?
+  email   String?
+  fotoUrl String? @map("foto_url")
+  role    String?
+
+  @@index([role])
+  @@map("profiles")
+}
+
+model QuranSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  mode            String
+  surahId         Int      @map("surah_id")
+  surahName       String   @map("surah_name")
+  ayahStart       Int      @map("ayah_start")
+  ayahEnd         Int      @map("ayah_end")
+  totalWords      Int      @map("total_words")
+  correctWords    Int      @map("correct_words")
+  accuracy        Float
+  mistakes        Json
+  transcript      String?
+  durationSeconds Int?     @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  mistakeRows     QuranMistake[]
+
+  @@index([userId, createdAt])
+  @@map("quran_sessions")
+}
+
+model QuranMistake {
+  id          String       @id @default(uuid()) @db.Uuid
+  sessionId   String       @map("session_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  surahId     Int          @map("surah_id")
+  ayahNumber  Int          @map("ayah_number")
+  wordArabic  String       @map("word_arabic")
+  wordSpoken  String       @map("word_spoken")
+  kind        String?
+  confidence  Float?
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  session     QuranSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@map("quran_mistakes")
+}
+
+model Notification {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String?
+  title       String
+  description String?
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Setting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("settings")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String
+  title       String
+  description String?
+  status      String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Donation {
+  id            String  @id @default(uuid()) @db.Uuid
+  donorName     String? @map("donor_name")
+  nominal       Decimal @db.Decimal(18, 2)
+  paymentStatus String? @map("payment_status")
+
+  @@map("donations")
+}
+
+model Material {
+  id    String @id @default(uuid()) @db.Uuid
+  title String
+  slug  String
+
+  @@map("materials")
+}
+
+model LiveSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
+
+  @@map("live_sessions")
+}
