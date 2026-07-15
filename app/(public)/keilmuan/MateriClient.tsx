@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
-import { MateriService } from '@/lib/materi-service'
 
 const TOPICS = ['Akhlak', 'Fiqih', 'Tafsir', 'B. Arrab', 'Hadits', 'Akidah']
 const LEVELS: Record<string, string> = {
-  mudah: 'bg-emerald-500', menengah: 'bg-orange-400', sulit: 'bg-red-500'
+  mudah: 'bg-emerald-500',
+  menengah: 'bg-orange-400',
+  sulit: 'bg-red-500',
 }
 
 interface Keilmuan {
@@ -39,18 +40,6 @@ export default function MateriClient({ initialMaterials, keilmuanList }: MateriC
   const [search, setSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTopic, setTopic] = useState('')
-  const [materi, setMateri] = useState<MateriItem[]>(initialMaterials || [])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setLoading(true)
-    MateriService.getAllMaterials()
-      .then((data) => {
-        if (data?.length) setMateri(data as MateriItem[])
-      })
-      .catch(() => undefined)
-      .finally(() => setLoading(false))
-  }, [])
 
   const handleSearch = () => setSearchQuery(search)
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -59,15 +48,17 @@ export default function MateriClient({ initialMaterials, keilmuanList }: MateriC
 
   const filtered = useMemo(
     () =>
-      materi.filter((item) => {
+      initialMaterials.filter((item) => {
+        const keyword = searchQuery.toLowerCase()
         const matchSearch =
           !searchQuery ||
-          item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+          item.title.toLowerCase().includes(keyword) ||
+          item.summary?.toLowerCase().includes(keyword) ||
+          item.description?.toLowerCase().includes(keyword)
         const matchTopic = !selectedTopic || item.keilmuan?.nama === selectedTopic
         return matchSearch && matchTopic
       }),
-    [materi, searchQuery, selectedTopic],
+    [initialMaterials, searchQuery, selectedTopic],
   )
 
   const topics = keilmuanList.length > 0 ? keilmuanList.map((item) => item.nama) : TOPICS
@@ -117,9 +108,7 @@ export default function MateriClient({ initialMaterials, keilmuanList }: MateriC
           ))}
         </div>
 
-        {loading && materi.length === 0 ? (
-          <div className="py-20 text-center text-gray-400">Memuat materi...</div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="py-20 text-center text-gray-400">Materi tidak ditemukan.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
