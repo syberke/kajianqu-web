@@ -29,6 +29,7 @@ export interface QuranVerse {
   verseKey: string
   textUthmani: string
   textSimple: string
+  audioUrl?: string
   words: QuranWord[]
 }
 
