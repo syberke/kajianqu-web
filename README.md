@@ -1,26 +1,70 @@
 # KajianQu
 
-KajianQu adalah aplikasi web pembelajaran Islam dan Al-Qur'an berbasis Next.js. Modul latihan Qur'an menyediakan mode **Ziyadah** dan **Murojaah** dengan transkripsi audio realtime melalui Gemini Live, teks Qur'an dari Quran API, serta koreksi urutan kata berbasis sequence alignment.
+KajianQu adalah aplikasi web pembelajaran Islam dan Al-Qur'an berbasis Next.js. Pengalaman AI Al-Qur'an terpusat di **`/quran-ai`** dan memiliki tepat dua mode aktif: **Murojaah** dan **Belajar Al-Qur'an**. Teks dan struktur ayat berasal dari Quran Foundation API, transkripsi audio memakai Gemini Live, dan data aplikasi yang dimigrasikan berjalan melalui Prisma.
 
 ## Stack utama
 
 - Next.js 16, React 19, TypeScript, Tailwind CSS 4
-- Supabase Auth
+- Supabase Auth dan Storage
 - Prisma ORM + PostgreSQL
-- Google Gemini Live API
+- Google Gemini Live API dan Gemini audio understanding
 - Quran Foundation API (`api.quran.com/api/v4`)
 
-## Cara kerja latihan Qur'an
+## Quran AI
 
-1. Pengguna memilih mode Ziyadah atau Murojaah.
-2. Pengguna memilih surah serta rentang ayat.
-3. Server memuat teks dan word-level Qur'an dari Quran API.
-4. Server KajianQu membuat ephemeral token Gemini Live untuk pengguna yang sudah login.
-5. Browser mengirim PCM 16 kHz langsung ke Gemini Live selama mikrofon aktif.
-6. Input transcription Gemini disejajarkan dengan urutan kata Qur'an menggunakan sequence alignment.
-7. Kata benar, berbeda, dan terlewat ditandai realtime. Hasil akhir disimpan melalui API aplikasi ke Prisma.
+Route canonical:
 
-Gemini dipakai untuk transkripsi audio realtime. Teks Qur'an dari Quran API tetap menjadi sumber canonical untuk proses koreksi.
+- `/quran-ai` — hub pemilihan mode, surah, dan rentang ayat
+- `/quran-ai/murojaah/[surahId]?start=&end=` — Murojaah
+- `/quran-ai/belajar/[surahId]?start=&end=` — Belajar Al-Qur'an
+- `/quran-ai/quiz` — Generate Quiz Al-Qur'an
+
+Route Tahfidz, Tahsin, Ziyadah, dan `/quran` lama hanya dipertahankan sebagai redirect kompatibilitas ke route canonical di atas. Tahfidz diarahkan ke Murojaah. Tahsin dan Ziyadah diarahkan ke Belajar Al-Qur'an.
+
+## Cara kerja Murojaah
+
+1. Pengguna memilih surah serta ayat mulai dan selesai.
+2. Server memuat teks dan word-level Al-Qur'an dari Quran Foundation API.
+3. Server KajianQu membuat ephemeral token Gemini Live untuk pengguna yang sudah login.
+4. Browser mengirim PCM 16 kHz ke Gemini Live selama mikrofon aktif.
+5. Selama pengguna membaca, teks ayat, transkrip, dan warna koreksi disembunyikan.
+6. Setelah pengguna menekan **Selesai membaca**, transkrip final disejajarkan dengan urutan kata canonical menggunakan sequence alignment.
+7. Hasil benar, berbeda, dan terlewat baru ditampilkan setelah sesi selesai dan disimpan melalui API aplikasi ke Prisma.
+
+Satu kata yang terlewat tidak dibandingkan hanya berdasarkan indeks array. Alignment final menangani substitution, omission, dan insertion agar kesalahan tidak menggeser seluruh kata berikutnya.
+
+## Cara kerja Belajar Al-Qur'an
+
+1. Pengguna memilih surah serta rentang ayat.
+2. Quran Foundation API mengembalikan teks, word data, dan audio recitation ayah-by-ayah.
+3. Pengguna wajib mendengarkan seluruh audio contoh pada rentang yang dipilih.
+4. Setelah audio contoh selesai, tombol membaca aktif.
+5. Selama membaca, Gemini Live menghasilkan input transcription dan browser juga menyimpan rekaman mikrofon penuh.
+6. Setelah pengguna selesai, aplikasi menghitung alignment lafaz/urutan kata.
+7. Rekaman audio penuh dikirim ke Gemini untuk structured audio analysis yang berfokus pada indikasi:
+   - makhraj atau artikulasi huruf
+   - tajwid dan hukum bacaan
+   - mad
+   - ghunnah
+   - qalqalah
+   - waqaf dan ibtida
+   - lafaz yang berubah atau terlewat
+8. UI menampilkan skor latihan per kategori, ringkasan, temuan audio yang cukup jelas, dan saran latihan.
+
+Analisis makhraj dan tajwid adalah **AI-assisted training indication**. Sistem meminta model hanya melaporkan hal yang terdengar dan menggunakan bahasa seperti "terdengar" atau "terindikasi" ketika tidak pasti. Fitur ini bukan penilaian talaqqi final dan tidak menggantikan guru atau ustadz.
+
+## Generate Quiz Al-Qur'an
+
+`/quran-ai/quiz` membuat set quiz baru dari surah dan rentang ayat yang dipilih. Jawaban Qur'an tidak dibuat oleh model. Teks soal dan jawaban benar berasal dari data canonical Quran Foundation API.
+
+Jenis soal yang tersedia:
+
+- Sambung Ayat
+- Ayat Berikutnya
+- Tebak Nomor Ayat
+- Lengkapi Kata yang Hilang
+
+Pengguna dapat memilih 5, 10, 15, atau 20 soal lalu generate ulang set quiz.
 
 ## Environment
 
@@ -38,9 +82,12 @@ GEMINI_API_KEY=
 
 # Optional
 QURAN_API_BASE_URL=https://api.quran.com/api/v4
+QURAN_RECITATION_ID=1
 ```
 
-`GEMINI_API_KEY` harus tetap server-side. Browser menerima ephemeral token berumur pendek dari endpoint aplikasi, bukan long-lived API key.
+`GEMINI_API_KEY` harus tetap server-side. Browser menerima ephemeral token berumur pendek untuk Gemini Live, bukan long-lived API key.
+
+`QURAN_RECITATION_ID` adalah ID recitation ayah-by-ayah yang dikirim ke Quran Foundation API untuk audio contoh mode Belajar Al-Qur'an. Bila tidak diisi, aplikasi menggunakan ID `1`.
 
 ## Menjalankan aplikasi
 
@@ -52,7 +99,7 @@ npm run dev
 
 ## Prisma dan database
 
-Supabase masih dipakai sebagai penyedia autentikasi. Query database pada modul yang dimigrasikan berjalan melalui Prisma di server.
+Supabase masih dipakai sebagai penyedia autentikasi dan Storage untuk file yang memang membutuhkan object storage. Query database pada modul yang dimigrasikan berjalan melalui Prisma di server.
 
 Untuk database KajianQu yang sudah berjalan, set `DATABASE_URL` dan `DIRECT_URL` ke PostgreSQL saat ini. Sebelum deployment production pertama, bandingkan schema live dengan schema Prisma karena repository lama tidak menyimpan schema database lengkap:
 
@@ -60,7 +107,7 @@ Untuk database KajianQu yang sudah berjalan, set `DATABASE_URL` dan `DIRECT_URL`
 npm run db:pull
 ```
 
-Tinjau perbedaannya terlebih dahulu. Setelah schema dan migration sudah sesuai dengan database production, generate client dan deploy migration:
+Tinjau perbedaannya terlebih dahulu. Setelah schema dan migration sesuai dengan database production, generate client dan deploy migration:
 
 ```bash
 npm run db:generate
@@ -73,11 +120,7 @@ Untuk perubahan schema saat development:
 npm run db:migrate
 ```
 
-Abstraksi Prisma membuat perpindahan antar penyedia PostgreSQL seperti Supabase Postgres, Neon, atau PostgreSQL terkelola lain jauh lebih sederhana. Perpindahan ke engine SQL yang berbeda tetap memerlukan peninjauan provider, native type, dan migration history.
-
-## Validasi latihan Qur'an
-
-Koreksi realtime saat ini menilai kecocokan kata dan urutan berdasarkan hasil transkripsi audio. Fitur ini tidak dimaksudkan sebagai pengganti talaqqi dengan guru untuk penilaian makhraj atau tajwid yang definitif.
+Abstraksi Prisma membuat perpindahan antar penyedia PostgreSQL seperti Supabase Postgres, Neon, atau PostgreSQL terkelola lain lebih terisolasi. Perpindahan ke engine SQL yang berbeda tetap memerlukan peninjauan provider, native type, dan migration history.
 
 ## Scripts
 
