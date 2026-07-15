@@ -85,16 +85,21 @@ export async function getQuranChapters(): Promise<QuranChapter[]> {
 }
 
 function mapVerse(verse: ApiVerse): QuranVerse {
+  const verseAudioUrl = normalizeAudioUrl(verse.audio?.url)
   const words: QuranWord[] = (verse.words ?? [])
     .filter((word) => !word.char_type_name || word.char_type_name === 'word')
-    .map((word) => ({
+    .map((word, wordArrayIndex) => ({
       id: word.id,
       arabic: word.text_uthmani ?? word.text_imlaei ?? '',
       simple: word.text_imlaei ?? word.text_uthmani ?? '',
       ayahNumber: verse.verse_number,
       verseKey: word.verse_key ?? verse.verse_key,
       wordIndex: word.position - 1,
-      audioUrl: normalizeAudioUrl(word.audio_url),
+      audioUrl: verseAudioUrl
+        ? wordArrayIndex === 0
+          ? verseAudioUrl
+          : undefined
+        : normalizeAudioUrl(word.audio_url),
     }))
     .filter((word) => word.arabic.trim().length > 0)
 
@@ -108,7 +113,7 @@ function mapVerse(verse: ApiVerse): QuranVerse {
       verse.text_uthmani_simple ??
       verse.text_imlaei_simple ??
       words.map((word) => word.simple ?? word.arabic).join(' '),
-    audioUrl: normalizeAudioUrl(verse.audio?.url),
+    audioUrl: verseAudioUrl,
     words,
   }
 }
