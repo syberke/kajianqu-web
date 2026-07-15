@@ -22,10 +22,10 @@ export default async function PublicLayout({ children }: { children: React.React
         userProfile={
           userProfile
             ? {
-                nama: userProfile.nama,
-                email: userProfile.email,
-                foto_url: userProfile.fotoUrl,
-                role: userProfile.role,
+                nama: userProfile.nama ?? undefined,
+                email: userProfile.email ?? undefined,
+                foto_url: userProfile.fotoUrl ?? undefined,
+                role: userProfile.role ?? undefined,
               }
             : null
         }
