@@ -1,157 +1,61 @@
-import { createClient } from '@supabase/supabase-js'
-import {
-Users,
-Wallet,
-BookOpen,
-Radio
-} from 'lucide-react'
+import { BookOpen, Download, Radio, Users, Wallet } from 'lucide-react'
+
+import { db } from '@/lib/db'
+import { requireRole } from '@/lib/helpers/auth'
 
 export default async function ReportsPage() {
-const supabaseAdmin = createClient(
-process.env.NEXT_PUBLIC_SUPABASE_URL!,
-process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+  await requireRole('admin')
 
-const { count: totalAsatidz } = await supabaseAdmin
-.from('profiles')
-.select('*', {
-count: 'exact',
-head: true
-})
-.eq('role', 'asatidz')
+  const [totalAsatidz, totalMateri, totalLive, donationAggregate, totalUsers] = await Promise.all([
+    db.profile.count({ where: { role: 'asatidz' } }),
+    db.material.count(),
+    db.liveSession.count(),
+    db.donation.aggregate({
+      where: { paymentStatus: 'paid' },
+      _sum: { nominal: true },
+    }),
+    db.profile.count(),
+  ])
 
-const { count: totalMateri } = await supabaseAdmin
-.from('materials')
-.select('*', {
-count: 'exact',
-head: true
-})
+  const totalDonasi = donationAggregate._sum.nominal?.toNumber() ?? 0
+  const reports = [
+    { title: 'User', value: totalUsers, icon: <Users />, href: '/api/admin/reports/users', label: 'Export User' },
+    { title: 'Asatidz', value: totalAsatidz, icon: <Users />, href: '/api/admin/reports/asatidz', label: 'Export Asatidz' },
+    { title: 'Total Donasi', value: `Rp ${totalDonasi.toLocaleString('id-ID')}`, icon: <Wallet />, href: '/api/admin/reports/donasi', label: 'Export Donasi' },
+    { title: 'Materi', value: totalMateri, icon: <BookOpen />, href: '/api/admin/reports/materi', label: 'Export Materi' },
+    { title: 'Live Session', value: totalLive, icon: <Radio />, href: '/api/admin/reports/live', label: 'Export Live' },
+  ]
 
-const { count: totalLive } = await supabaseAdmin
-.from('live_sessions')
-.select('*', {
-count: 'exact',
-head: true
-})
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Laporan Sistem</h1>
+        <p className="text-gray-500">Ringkasan seluruh aktivitas KajianQu dari query Prisma.</p>
+      </div>
 
-const { data: donations } = await supabaseAdmin
-.from('donations')
-.select('nominal')
-.eq('payment_status', 'paid')
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {reports.map((report) => (
+          <ReportCard key={report.title} icon={report.icon} title={report.title} value={report.value} />
+        ))}
+      </div>
 
-const totalDonasi =
-donations?.reduce(
-(sum, item) =>
-sum + Number(item.nominal),
-0
-) || 0
-const { count: totalUsers } = await supabaseAdmin
-  .from('profiles')
-  .select('*', {
-    count: 'exact',
-    head: true
-  })
-return ( <div className="space-y-6">
-
-  <div>
-    <h1 className="text-2xl font-bold">
-      Laporan Sistem
-    </h1>
-    <p className="text-gray-500">
-      Ringkasan seluruh aktivitas KajianQu
-    </p>
-  </div>
-
-  <div className="grid md:grid-cols-4 gap-4">
-
-    <ReportCard
-      icon={<Users />}
-      title="Asatidz"
-      value={totalAsatidz || 0}
-    />
-<ReportCard
-  icon={<Users />}
-  title="User"
-  value={totalUsers || 0}
-/>
-    <ReportCard
-      icon={<Wallet />}
-      title="Total Donasi"
-      value={`Rp ${totalDonasi.toLocaleString('id-ID')}`}
-    />
-
-    <ReportCard
-      icon={<BookOpen />}
-      title="Materi"
-      value={totalMateri || 0}
-    />
-
-    <ReportCard
-      icon={<Radio />}
-      title="Live Session"
-      value={totalLive || 0}
-    />
-
-  </div>
-  <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
-
-  <a
-    href="/api/admin/reports/asatidz"
-    className="bg-green-600 text-white px-4 py-3 rounded-xl text-center"
-  >
-    Export Asatidz
-  </a>
-
-  <a
-    href="/api/admin/reports/donasi"
-    className="bg-blue-600 text-white px-4 py-3 rounded-xl text-center"
-  >
-    Export Donasi
-  </a>
-
-  <a
-    href="/api/admin/reports/materi"
-    className="bg-orange-600 text-white px-4 py-3 rounded-xl text-center"
-  >
-    Export Materi
-  </a>
-
-  <a
-    href="/api/admin/reports/live"
-    className="bg-red-600 text-white px-4 py-3 rounded-xl text-center"
-  >
-    Export Live
-  </a>
-
-  <a
-    href="/api/admin/reports/users"
-    className="bg-purple-600 text-white px-4 py-3 rounded-xl text-center"
-  >
-    Export User
-  </a>
-
-</div>
-</div>
-
-)
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {reports.map((report) => (
+          <a key={report.href} href={report.href} className="flex items-center justify-center gap-2 rounded-xl bg-[#064E3B] px-4 py-3 text-center font-bold text-white transition hover:bg-emerald-800">
+            <Download size={17} /> {report.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  )
 }
 
-function ReportCard({
-icon,
-title,
-value
-}: any) {
-return ( <div className="bg-white border rounded-xl p-5"> <div className="mb-3">
-{icon} </div>
-  <p className="text-sm text-gray-500">
-    {title}
-  </p>
-
-  <h2 className="text-2xl font-bold">
-    {value}
-  </h2>
-</div>
-
-
-)
+function ReportCard({ icon, title, value }: { icon: React.ReactNode; title: string; value: number | string }) {
+  return (
+    <div className="rounded-xl border bg-white p-5">
+      <div className="mb-3 text-emerald-700">{icon}</div>
+      <p className="text-sm text-gray-500">{title}</p>
+      <h2 className="mt-1 text-2xl font-bold">{value}</h2>
+    </div>
+  )
 }
