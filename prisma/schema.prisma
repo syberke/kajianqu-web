@@ -9,11 +9,12 @@ datasource db {
 }
 
 model Profile {
-  id      String  @id @db.Uuid
-  nama    String?
-  email   String?
-  fotoUrl String? @map("foto_url")
-  role    String?
+  id        String     @id @db.Uuid
+  nama      String?
+  email     String?
+  fotoUrl   String?    @map("foto_url")
+  role      String?
+  materials Material[] @relation("MaterialAsatidz")
 
   @@index([role])
   @@map("profiles")
@@ -100,11 +101,30 @@ model Donation {
   @@map("donations")
 }
 
-model Material {
-  id    String @id @default(uuid()) @db.Uuid
-  title String
-  slug  String
+model Keilmuan {
+  id        String     @id @default(uuid()) @db.Uuid
+  nama      String
+  materials Material[]
 
+  @@map("keilmuan")
+}
+
+model Material {
+  id           String     @id @default(uuid()) @db.Uuid
+  title        String
+  slug         String
+  summary      String?
+  type         String?
+  isPublished  Boolean    @default(false) @map("is_published")
+  keilmuanId   String?    @map("keilmuan_id") @db.Uuid
+  asatidzId    String?    @map("asatidz_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  keilmuan     Keilmuan?  @relation(fields: [keilmuanId], references: [id])
+  asatidz      Profile?   @relation("MaterialAsatidz", fields: [asatidzId], references: [id])
+
+  @@index([asatidzId, createdAt])
+  @@index([keilmuanId])
+  @@index([isPublished, createdAt])
   @@map("materials")
 }
 
