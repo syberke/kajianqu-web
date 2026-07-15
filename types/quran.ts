@@ -1,6 +1,5 @@
 export type QuranPracticeMode = 'murojaah' | 'belajar'
-export type LegacyQuranMode = 'tahfidz' | 'tahsin' | 'ziyadah'
-export type QuranMode = QuranPracticeMode | LegacyQuranMode
+export type QuranMode = QuranPracticeMode
 
 export type WordState = 'idle' | 'current' | 'correct' | 'wrong' | 'missed'
 
