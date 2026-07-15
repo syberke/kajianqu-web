@@ -15,11 +15,11 @@ interface Props {
 const MODE_COPY: Record<QuranPracticeMode, { title: string; description: string }> = {
   murojaah: {
     title: 'Murojaah',
-    description: 'Baca dari hafalan. Koreksi lafaz dan urutan kata baru ditampilkan setelah bacaan selesai.',
+    description: 'Baca hafalan sampai selesai tanpa koreksi yang mengganggu. Hasil lafaz, kata terlewat, dan urutan ayat dibuka setelah sesi dihentikan.',
   },
   belajar: {
     title: "Belajar Al-Qur'an",
-    description: 'Dengarkan contoh bacaan ayat pilihan, baca ulang, lalu terima analisis audio tajwid dan bacaan setelah selesai.',
+    description: 'Dengarkan contoh bacaan terlebih dahulu, lalu tirukan. Setelah selesai, AI memberi evaluasi makhraj, tajwid, hukum bacaan, mad, ghunnah, qalqalah, serta waqaf dan ibtida.',
   },
 }
 
@@ -69,9 +69,9 @@ export default function QuranAiHubClient({ chapters, initialMode = 'murojaah' }:
           <div className="grid gap-7 lg:grid-cols-[1fr_360px] lg:items-end">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-200">Quran AI</p>
-              <h1 className="mt-3 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">Latihan bacaan sesuai tujuan belajarmu</h1>
+              <h1 className="mt-3 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">Murojaah, belajar bacaan, dan quiz dalam satu halaman</h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">
-                Pilih Murojaah untuk setor hafalan dan lihat koreksi setelah selesai, atau Belajar Al-Qur&apos;an untuk dengar lalu baca ulang dengan analisis audio pendamping.
+                Semua fitur AI Al-Qur&apos;an berada di route <strong>/quran-ai</strong>. Pilih Murojaah untuk membaca dahulu dan menerima koreksi setelah selesai, atau Belajar Al-Qur&apos;an untuk mendengarkan contoh lalu menirukan bacaan.
               </p>
             </div>
             <Link href="/quran-ai/quiz" className="group rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur transition hover:bg-white/15">
@@ -80,7 +80,7 @@ export default function QuranAiHubClient({ chapters, initialMode = 'murojaah' }:
                 <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Generate Quiz</span>
               </div>
               <h2 className="mt-5 text-xl font-black">Quiz Ayat Al-Qur&apos;an</h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/65">Pilih rentang ayat lalu generate soal baru dari teks Qur&apos;an canonical.</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/65">Pilih surah dan rentang ayat, kemudian generate quiz baru dari teks Qur&apos;an canonical.</p>
             </Link>
           </div>
         </section>
@@ -88,7 +88,7 @@ export default function QuranAiHubClient({ chapters, initialMode = 'murojaah' }:
         <form onSubmit={submit} className="mt-7 grid gap-7 lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="space-y-5">
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Pilih Mode</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Dua Mode Utama</p>
               <div className="mt-4 space-y-3">
                 {(['murojaah', 'belajar'] as QuranPracticeMode[]).map((item) => {
                   const Icon = item === 'murojaah' ? Brain : Headphones
