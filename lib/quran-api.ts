@@ -3,6 +3,8 @@ import 'server-only'
 import type { QuranChapter, QuranVerse, QuranWord } from '@/types/quran'
 
 const QURAN_API_BASE_URL = process.env.QURAN_API_BASE_URL ?? 'https://api.quran.com/api/v4'
+const QURAN_AUDIO_BASE_URL = 'https://verses.quran.com'
+const DEFAULT_RECITATION_ID = process.env.QURAN_RECITATION_ID ?? '1'
 const PAGE_SIZE = 50
 
 interface ApiChapter {
@@ -32,6 +34,10 @@ interface ApiVerse {
   text_uthmani?: string
   text_uthmani_simple?: string
   text_imlaei_simple?: string
+  audio?: {
+    verse_key: string
+    url: string
+  }
   words?: ApiWord[]
 }
 
@@ -58,6 +64,13 @@ async function quranFetch<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
+function normalizeAudioUrl(url?: string): string | undefined {
+  if (!url) return undefined
+  if (/^https?:\/\//i.test(url)) return url
+  if (url.startsWith('//')) return `https:${url}`
+  return `${QURAN_AUDIO_BASE_URL}/${url.replace(/^\/+/, '')}`
+}
+
 export async function getQuranChapters(): Promise<QuranChapter[]> {
   const payload = await quranFetch<{ chapters: ApiChapter[] }>('/chapters?language=id')
 
@@ -81,9 +94,7 @@ function mapVerse(verse: ApiVerse): QuranVerse {
       ayahNumber: verse.verse_number,
       verseKey: word.verse_key ?? verse.verse_key,
       wordIndex: word.position - 1,
-      audioUrl: word.audio_url
-        ? `https://verses.quran.com/${word.audio_url.replace(/^\//, '')}`
-        : undefined,
+      audioUrl: normalizeAudioUrl(word.audio_url),
     }))
     .filter((word) => word.arabic.trim().length > 0)
 
@@ -97,6 +108,7 @@ function mapVerse(verse: ApiVerse): QuranVerse {
       verse.text_uthmani_simple ??
       verse.text_imlaei_simple ??
       words.map((word) => word.simple ?? word.arabic).join(' '),
+    audioUrl: normalizeAudioUrl(verse.audio?.url),
     words,
   }
 }
@@ -109,6 +121,7 @@ export async function getChapterVerses(chapterId: number): Promise<QuranVerse[]>
   const query = new URLSearchParams({
     language: 'id',
     words: 'true',
+    audio: DEFAULT_RECITATION_ID,
     fields: 'text_uthmani,text_uthmani_simple,text_imlaei_simple',
     word_fields: 'text_uthmani,text_imlaei,verse_key,position,audio_url,char_type_name',
     per_page: String(PAGE_SIZE),
