@@ -9,12 +9,13 @@ datasource db {
 }
 
 model Profile {
-  id        String     @id @db.Uuid
-  nama      String?
-  email     String?
-  fotoUrl   String?    @map("foto_url")
-  role      String?
-  materials Material[] @relation("MaterialAsatidz")
+  id           String        @id @db.Uuid
+  nama         String?
+  email        String?
+  fotoUrl      String?       @map("foto_url")
+  role         String?
+  materials    Material[]    @relation("MaterialAsatidz")
+  liveSessions LiveSession[] @relation("LiveSessionAsatidz")
 
   @@index([role])
   @@map("profiles")
@@ -114,6 +115,9 @@ model Material {
   title        String
   slug         String
   summary      String?
+  description  String?
+  youtubeUrl   String?    @map("youtube_url")
+  level        String?
   type         String?
   isPublished  Boolean    @default(false) @map("is_published")
   keilmuanId   String?    @map("keilmuan_id") @db.Uuid
@@ -131,7 +135,15 @@ model Material {
 model LiveSession {
   id          String    @id @default(uuid()) @db.Uuid
   title       String
+  description String?
+  youtubeUrl  String?   @map("youtube_url")
+  streamUrl   String?   @map("stream_url")
+  status      String?
+  asatidzId   String?   @map("asatidz_id") @db.Uuid
   scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  asatidz     Profile?  @relation("LiveSessionAsatidz", fields: [asatidzId], references: [id])
 
+  @@index([asatidzId])
+  @@index([status, scheduledAt])
   @@map("live_sessions")
 }
