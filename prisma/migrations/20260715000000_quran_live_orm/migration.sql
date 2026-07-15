@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS "materials" (
   "title" TEXT NOT NULL,
   "slug" TEXT NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "materials_slug_key" ON "materials"("slug");
 
 CREATE TABLE IF NOT EXISTS "live_sessions" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
