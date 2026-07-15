@@ -23,6 +23,12 @@ interface UseGeminiLiveRecitationOptions {
   onError: (message: string) => void
 }
 
+export interface RecitationRecordingResult {
+  transcript: string
+  audioBlob: Blob | null
+  mimeType: string
+}
+
 const LIVE_ENDPOINT =
   'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'
 const TARGET_SAMPLE_RATE = 16_000
@@ -83,6 +89,12 @@ function pcmToBase64(pcm: Int16Array): string {
   return btoa(binary)
 }
 
+function getPreferredRecordingMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return ''
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? ''
+}
+
 export function useGeminiLiveRecitation({
   onTranscript,
   onError,
@@ -94,9 +106,31 @@ export function useGeminiLiveRecitation({
   const audioContextRef = useRef<AudioContext | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordedAudioRef = useRef<Blob | null>(null)
   const transcriptRef = useRef('')
-  const resolveStopRef = useRef<((transcript: string) => void) | null>(null)
+  const resolveStopRef = useRef<((result: RecitationRecordingResult) => void) | null>(null)
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const finishingRef = useRef(false)
+
+  const stopMediaRecorder = useCallback(async (): Promise<Blob | null> => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return recordedAudioRef.current
+    if (recorder.state === 'inactive') return recordedAudioRef.current
+
+    return new Promise<Blob | null>((resolve) => {
+      recorder.onstop = () => {
+        const mimeType = recorder.mimeType || 'audio/webm'
+        const blob = audioChunksRef.current.length > 0
+          ? new Blob(audioChunksRef.current, { type: mimeType })
+          : null
+        recordedAudioRef.current = blob
+        resolve(blob)
+      }
+      recorder.stop()
+    })
+  }, [])
 
   const cleanupAudio = useCallback(async () => {
     processorRef.current?.disconnect()
@@ -105,6 +139,7 @@ export function useGeminiLiveRecitation({
     sourceRef.current = null
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
+    mediaRecorderRef.current = null
 
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       await audioContextRef.current.close().catch(() => undefined)
@@ -113,23 +148,37 @@ export function useGeminiLiveRecitation({
   }, [])
 
   const completeStop = useCallback(async () => {
+    if (finishingRef.current) return
+    finishingRef.current = true
+
     if (stopTimerRef.current) {
       clearTimeout(stopTimerRef.current)
       stopTimerRef.current = null
     }
+
+    const audioBlob = await stopMediaRecorder().catch(() => recordedAudioRef.current)
+    const mimeType = audioBlob?.type || mediaRecorderRef.current?.mimeType || 'audio/webm'
     await cleanupAudio()
     socketRef.current?.close(1000, 'recitation finished')
     socketRef.current = null
     setIsRecording(false)
     setIsConnecting(false)
-    resolveStopRef.current?.(transcriptRef.current)
+    resolveStopRef.current?.({
+      transcript: transcriptRef.current,
+      audioBlob,
+      mimeType,
+    })
     resolveStopRef.current = null
-  }, [cleanupAudio])
+    finishingRef.current = false
+  }, [cleanupAudio, stopMediaRecorder])
 
   const startRecording = useCallback(async () => {
     if (isRecording || isConnecting) return false
     setIsConnecting(true)
     transcriptRef.current = ''
+    audioChunksRef.current = []
+    recordedAudioRef.current = null
+    finishingRef.current = false
     onTranscript('')
 
     try {
@@ -204,6 +253,16 @@ export function useGeminiLiveRecitation({
       })
       streamRef.current = stream
 
+      if (typeof MediaRecorder !== 'undefined') {
+        const mimeType = getPreferredRecordingMimeType()
+        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data)
+        }
+        recorder.start(1_000)
+        mediaRecorderRef.current = recorder
+      }
+
       const AudioContextClass = window.AudioContext
       const audioContext = new AudioContextClass({ latencyHint: 'interactive' })
       audioContextRef.current = audioContext
@@ -235,6 +294,9 @@ export function useGeminiLiveRecitation({
       setIsRecording(true)
       return true
     } catch (error) {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
       await cleanupAudio()
       socketRef.current?.close()
       socketRef.current = null
@@ -251,15 +313,20 @@ export function useGeminiLiveRecitation({
     }
   }, [cleanupAudio, completeStop, isConnecting, isRecording, onError, onTranscript])
 
-  const stopRecording = useCallback(async (): Promise<string> => {
-    if (!socketRef.current || !isRecording) return transcriptRef.current
+  const stopRecording = useCallback(async (): Promise<RecitationRecordingResult> => {
+    if (!socketRef.current || !isRecording) {
+      return {
+        transcript: transcriptRef.current,
+        audioBlob: recordedAudioRef.current,
+        mimeType: recordedAudioRef.current?.type || 'audio/webm',
+      }
+    }
 
     processorRef.current?.disconnect()
     sourceRef.current?.disconnect()
-    streamRef.current?.getTracks().forEach((track) => track.stop())
     setIsRecording(false)
 
-    return new Promise<string>((resolve) => {
+    return new Promise<RecitationRecordingResult>((resolve) => {
       resolveStopRef.current = resolve
       socketRef.current?.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }))
       stopTimerRef.current = setTimeout(() => void completeStop(), 2_500)
