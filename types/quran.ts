@@ -1,15 +1,39 @@
-// types/quran.ts
+export type QuranPracticeMode = 'ziyadah' | 'murojaah'
+export type LegacyQuranMode = 'tahfidz' | 'tahsin'
+export type QuranMode = QuranPracticeMode | LegacyQuranMode
 
-export type QuranMode = 'tahfidz' | 'tahsin'
+export type WordState = 'idle' | 'current' | 'correct' | 'wrong' | 'missed'
 
-export type WordState = 'idle' | 'correct' | 'wrong' | 'current'
-
-export interface QuranWord {
-  arabic: string
-  ayahNumber: number
-  wordIndex: number
+export interface QuranChapter {
+  id: number
+  nameSimple: string
+  nameArabic: string
+  translatedName: string
+  versesCount: number
+  revelationPlace: string
 }
 
+export interface QuranWord {
+  id?: number
+  arabic: string
+  simple?: string
+  ayahNumber: number
+  verseKey?: string
+  wordIndex: number
+  audioUrl?: string
+}
+
+export interface QuranVerse {
+  id: number
+  chapterId: number
+  number: number
+  verseKey: string
+  textUthmani: string
+  textSimple: string
+  words: QuranWord[]
+}
+
+// Legacy shape retained while old routes redirect to the new practice flow.
 export interface QuranAyah {
   number: number
   arabic: string[]
@@ -31,6 +55,8 @@ export interface SessionMistake {
   wordSpoken: string
   ayahNumber: number
   wordIndex: number
+  kind?: 'substitution' | 'omission' | 'insertion'
+  confidence?: number
 }
 
 export interface QuranSession {
@@ -46,6 +72,7 @@ export interface QuranSession {
   accuracy: number
   mistakes: SessionMistake[]
   durationSeconds?: number
+  transcript?: string
   createdAt?: string
 }
 
