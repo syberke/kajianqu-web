@@ -131,8 +131,9 @@ export default function QuranPracticeClient({
     reset()
     setStatus('connecting')
     startedAtRef.current = Date.now()
-    await startRecording()
-    setStatus((current) => (current === 'error' ? current : 'recording'))
+    const started = await startRecording()
+    if (!started) return
+    setStatus('recording')
     timerRef.current = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
     }, 1000)
