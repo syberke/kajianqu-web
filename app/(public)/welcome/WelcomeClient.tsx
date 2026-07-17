@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronLeft, ChevronRight, LogOut, User, LayoutDashboard, X, Play } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -54,7 +53,6 @@ const NOMINALS = [
 const PAYMENT_METHODS = ['Transfer Bank (BCA)', 'Transfer Bank (BNI)', 'Transfer Bank (BRI)', 'Transfer Bank (Mandiri)', 'BSI Mobile', 'GoPay', 'OVO', 'Dana', 'ShopeePay']
 
 export default function WelcomeClient({ userProfile }: Props) {
-  const router = useRouter()
   const isLoggedIn = !!userProfile
   const firstName = userProfile?.nama?.split(' ')[0] || 'Sahabat'
   const initial = userProfile?.nama?.charAt(0).toUpperCase() || 'U'
@@ -168,7 +166,7 @@ export default function WelcomeClient({ userProfile }: Props) {
               </button>
               {fiturOpen && (
                 <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 z-50">
-                  <Link href="/sahabat-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sahabat Qur'an</Link>
+                  <Link href="/sahabat-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sahabat Qur&apos;an</Link>
                   <Link href="/keilmuan" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Keilmuan</Link>
                 </div>
               )}
@@ -185,7 +183,7 @@ export default function WelcomeClient({ userProfile }: Props) {
                 <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 z-50">
                   <Link href="/donasi/infaq-asatidz" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Infaq Asatidz</Link>
                   <Link href="/donasi/sodaqoh" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sodaqoh</Link>
-                  <Link href="/donasi/wakaf-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Wakaf Al-Qur'an</Link>
+                  <Link href="/donasi/wakaf-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Wakaf Al-Qur&apos;an</Link>
                   <Link href="/donasi/katalog-produk" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Katalog Produk</Link>
                 </div>
               )}
@@ -232,42 +230,39 @@ export default function WelcomeClient({ userProfile }: Props) {
       </nav>
 
       {/* ════ HERO SECTION ════ */}
-      <section className="relative min-h-[90vh] bg-[#157a52] overflow-hidden flex items-center pt-24 pb-12">
-        <div className="absolute -left-32 -bottom-32 opacity-10 pointer-events-none w-[600px] h-[600px] bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] rounded-full" />
-        <div className="max-w-[1378px] mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative z-10">
-          <div className="space-y-5">
-            <p className="text-[#d3ad0f] font-bold text-[16px] md:text-lg tracking-wide uppercase">KajianQu</p>
-            {isLoggedIn ? (
-              <h1 className="text-[40px] md:text-5xl lg:text-[56px] font-bold text-white leading-[1.15]">
-                Ahlan wa Sahlan,<br />
-                <span className="text-[#d3ad0f]">{firstName}! 👋</span>
-              </h1>
-            ) : (
-              <h1 className="text-[40px] md:text-5xl lg:text-[56px] font-bold text-white leading-[1.15]">
-                Dekat dengan Al-Qur'an,<br />
-                Tenang di Hati
-              </h1>
-            )}
-            <p className="text-white/90 text-[15px] md:text-[16px] leading-relaxed max-w-[480px] pt-2">
-              {isLoggedIn
-                ? "Semoga hari ini penuh keberkahan. Lanjutkan perjalanan belajarmu dan tingkatkan amal ibadah bersama KajianQu."
-                : "KajianQU adalah web islami yang membantu kamu lebih dekat dengan Al-Qur'an. Mulai dari membaca, doa, jadwal ibadah, hingga belajar Islam dengan mudah dalam satu tempat."}
+      <section className="relative min-h-[880px] overflow-hidden flex items-center pt-32 pb-16 bg-gradient-to-b from-[#1a7a53] to-[#096942]">
+        <img src="/ornamen-islamic.png" alt="" className="absolute -left-28 bottom-[-120px] w-[430px] opacity-15 pointer-events-none" />
+        <img src="/ornamen-islamic.png" alt="" className="absolute right-[-180px] top-[-80px] w-[620px] opacity-10 pointer-events-none" />
+        <div className="relative z-10 max-w-[1378px] mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="text-white">
+            <p className="text-[#d3ad0f] text-lg md:text-2xl font-semibold">KajianQu</p>
+            <h1 className="mt-4 text-[40px] md:text-5xl font-semibold leading-[1.2] tracking-tight">
+              {isLoggedIn ? <>Ahlan wa Sahlan,<br /><span className="text-[#d3ad0f]">{firstName}</span></> : <>Dekat dengan Al-Qur&apos;an,<br />Tenang di Hati</>}
+            </h1>
+            <p className="mt-5 max-w-[660px] text-base md:text-xl leading-relaxed text-white/90">
+              KajianQu adalah web islami yang membantu kamu lebih dekat dengan Al-Qur&apos;an. Mulai dari membaca, doa, jadwal ibadah, hingga belajar Islam dengan mudah dalam satu tempat.
             </p>
-            <div className="flex flex-wrap gap-4 pt-4">
+            <div className="mt-10 flex flex-wrap items-center gap-4">
               {isLoggedIn ? (
-                <Link href="/sahabat-quran" className="px-8 py-3.5 bg-[#d3ad0f] text-white font-bold rounded-xl hover:bg-white hover:text-[#157a52] transition-all shadow-lg">
-                  Mulai Ngaji →
-                </Link>
+                <Link href="/quran-ai" className="rounded-[15px] bg-white px-8 py-3.5 font-semibold text-[#15441a] shadow-xl hover:bg-[#d3ad0f] hover:text-white transition-all">Mulai Ngaji</Link>
               ) : (
                 <>
-                  <img src={imgGooglePlay} alt="Google Play" className="h-[44px] md:h-[48px] object-contain cursor-pointer" />
-                  <img src={imgAppStore} alt="App Store" className="h-[44px] md:h-[48px] object-contain cursor-pointer" />
+                  <img src={imgGooglePlay} alt="Google Play" className="h-12 md:h-16 w-auto object-contain" />
+                  <img src={imgAppStore} alt="App Store" className="h-12 md:h-16 w-auto object-contain rounded-lg" />
                 </>
               )}
             </div>
           </div>
-          <div className="relative flex justify-center lg:justify-end">
-            <img src={imgHeroPhone} alt="App Preview" className="h-[450px] md:h-[550px] lg:h-[600px] object-contain drop-shadow-2xl rounded-[40px]" />
+
+          <div className="relative hidden lg:flex h-[610px] items-center justify-center" aria-label="Pratinjau aplikasi KajianQu">
+            <div className="absolute left-16 top-36 w-[210px] h-[410px] rounded-[38px] border-[9px] border-[#0b382a] bg-white shadow-2xl overflow-hidden rotate-[-4deg]">
+              <div className="h-28 bg-[#1a7a53] p-5 text-white"><p className="text-[10px] opacity-70">Assalamu&apos;alaikum</p><p className="mt-1 font-bold">Sahabat KajianQu</p></div>
+              <div className="p-4 space-y-3"><div className="h-20 rounded-2xl bg-emerald-50 p-3 text-[#15441a]"><p className="text-[9px]">Jadwal berikutnya</p><p className="mt-2 text-lg font-bold">Ashar 15:20</p></div><div className="grid grid-cols-2 gap-2">{['Qur’an','Keilmuan','Kelas','Donasi'].map(label => <div key={label} className="rounded-xl bg-gray-50 py-4 text-center text-[9px] font-semibold text-[#15441a]">{label}</div>)}</div></div>
+            </div>
+            <div className="absolute right-12 top-6 w-[290px] h-[570px] rounded-[46px] border-[11px] border-[#0b382a] bg-white shadow-2xl overflow-hidden rotate-[3deg]">
+              <div className="h-44 bg-gradient-to-b from-[#1a7a53] to-[#096942] p-7 text-white"><p className="text-xs opacity-70">Selamat datang</p><p className="mt-2 text-xl font-bold">KajianQu</p><div className="mt-6 rounded-2xl bg-white/15 px-4 py-3 backdrop-blur"><p className="text-[10px] opacity-75">Waktu sholat</p><p className="text-2xl font-bold">15:20</p></div></div>
+              <div className="p-5"><p className="text-sm font-bold text-[#15441a]">Lanjutkan belajar</p><div className="mt-4 h-28 rounded-2xl bg-emerald-50 p-4"><div className="h-12 rounded-xl bg-[#1a7a53]/15" /><p className="mt-3 text-[10px] font-semibold text-[#15441a]">Tahsin Al-Fatihah</p></div><div className="mt-4 grid grid-cols-3 gap-2">{['Ngaji','Kelas','Quiz'].map(label => <div key={label} className="rounded-xl border border-emerald-100 py-4 text-center text-[9px] font-semibold text-[#15441a]">{label}</div>)}</div></div>
+            </div>
           </div>
         </div>
       </section>
@@ -364,7 +359,7 @@ export default function WelcomeClient({ userProfile }: Props) {
             </button>
           </div>
           <div className="text-center mt-4">
-            <h3 className="text-[33px] font-bold text-[#0c1421]">Sahabat Qur'an</h3>
+            <h3 className="text-[33px] font-bold text-[#0c1421]">Sahabat Qur&apos;an</h3>
             <p className="text-gray-500 text-[17px]">Lengkap dengan koreksi AI</p>
           </div>
         </div>
@@ -456,7 +451,7 @@ export default function WelcomeClient({ userProfile }: Props) {
                   </div>
                 </div>
                 <p className="text-gray-500 text-sm leading-relaxed text-justify italic">
-                  "Aplikasi ini bukan cuma sekadar platform islami biasa. Dari sisi desain dan pengalaman pengguna, semuanya terasa matang dan terstruktur."
+                  &ldquo;Aplikasi ini bukan cuma sekadar platform islami biasa. Dari sisi desain dan pengalaman pengguna, semuanya terasa matang dan terstruktur.&rdquo;
                 </p>
               </div>
             ))}
@@ -491,14 +486,14 @@ export default function WelcomeClient({ userProfile }: Props) {
           <div className="lg:col-span-4 space-y-6">
             <img src={imgLogoColor} alt="KajianQu" className="h-16 object-contain" />
             <p className="text-gray-500 text-sm leading-relaxed max-w-[90%]">
-              KajianQu adalah platform islami terpadu untuk membaca Al-Qur'an, doa, dan belajar Islam dengan mudah dan nyaman.
+              KajianQu adalah platform islami terpadu untuk membaca Al-Qur&apos;an, doa, dan belajar Islam dengan mudah dan nyaman.
             </p>
             <div className="flex gap-4">
               <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
-                <img src={imgWA} className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
+                <img src={imgWA} alt="WhatsApp" className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
               </a>
               <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
-                <img src={imgIG} className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
+                <img src={imgIG} alt="Instagram" className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
               </a>
             </div>
           </div>

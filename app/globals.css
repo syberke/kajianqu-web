@@ -52,6 +52,13 @@
 }
 
 :root {
+  --font-poppins: "Poppins", "Avenir Next", "Segoe UI", sans-serif;
+  --kajian-green-950: #0c2e1c;
+  --kajian-green-800: #15441a;
+  --kajian-green-700: #157a52;
+  --kajian-green-600: #1a7a53;
+  --kajian-gold: #d3ad0f;
+  --kajian-surface: #f4f7f6;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -131,5 +138,6 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
 }

@@ -22,7 +22,13 @@ interface Props {
 function getDashboardHref(role?: string) {
   if (role === 'admin') return '/dashboard/admin'
   if (role === 'asatidz') return '/dashboard/asatidz'
-  return '/dashboard/siswa'
+  return '/welcome'
+}
+
+function getProfileHref(role?: string) {
+  if (role === 'admin') return '/dashboard/admin/settings'
+  if (role === 'asatidz') return '/dashboard/asatidz/profile'
+  return '/dashboard/siswa/profile'
 }
 
 export default function PublicNavbar({ userProfile }: Props) {
@@ -132,7 +138,7 @@ export default function PublicNavbar({ userProfile }: Props) {
                     <p className="font-bold text-gray-800 text-sm">{userProfile?.nama}</p>
                     <p className="text-xs text-gray-400 capitalize mt-0.5">{userProfile?.role}</p>
                   </div>
-                  <Link href="/dashboard/siswa/profile" className="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-[#1a7a53] transition-colors" onClick={() => setProfileOpen(false)}>
+                  <Link href={getProfileHref(userProfile?.role)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-[#1a7a53] transition-colors" onClick={() => setProfileOpen(false)}>
                     <User size={16} /> Profil Saya
                   </Link>
                   <Link href={getDashboardHref(userProfile?.role)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-[#1a7a53] transition-colors" onClick={() => setProfileOpen(false)}>

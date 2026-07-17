@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email:    form.email,
       password: form.password,
     })
@@ -35,13 +35,37 @@ export default function LoginPage() {
       return
     }
 
-    window.location.href = '/'
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .maybeSingle()
+
+    const roleDestination = profile?.role === 'admin'
+      ? '/dashboard/admin'
+      : profile?.role === 'asatidz'
+        ? '/dashboard/asatidz'
+        : '/welcome'
+    const requestedDestination = new URLSearchParams(window.location.search).get('next')
+    const destination = requestedDestination?.startsWith('/') && !requestedDestination.startsWith('//')
+      ? requestedDestination
+      : roleDestination
+
+    router.replace(destination)
+    router.refresh()
   }
 
   const onGoogle = async () => {
+    const requestedDestination = new URLSearchParams(window.location.search).get('next')
+    const safeDestination = requestedDestination?.startsWith('/') && !requestedDestination.startsWith('//')
+      ? requestedDestination
+      : null
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    if (safeDestination) callbackUrl.searchParams.set('next', safeDestination)
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl.toString() },
     })
   }
 
