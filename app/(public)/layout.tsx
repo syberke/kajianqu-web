@@ -1,5 +1,4 @@
-import PublicFooter from '@/components/layout/PublicFooter'
-import PublicNavbar from '@/components/layout/PublicNavbar'
+import PublicShell from '@/components/layout/PublicShell'
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
 
@@ -16,22 +15,14 @@ export default async function PublicLayout({ children }: { children: React.React
       })
     : null
 
-  return (
-    <>
-      <PublicNavbar
-        userProfile={
-          userProfile
-            ? {
-                nama: userProfile.nama ?? undefined,
-                email: userProfile.email ?? undefined,
-                foto_url: userProfile.fotoUrl ?? undefined,
-                role: userProfile.role ?? undefined,
-              }
-            : null
-        }
-      />
-      <main>{children}</main>
-      <PublicFooter />
-    </>
-  )
+  const normalizedProfile = userProfile
+    ? {
+        nama: userProfile.nama ?? undefined,
+        email: userProfile.email ?? undefined,
+        foto_url: userProfile.fotoUrl ?? undefined,
+        role: userProfile.role ?? undefined,
+      }
+    : null
+
+  return <PublicShell userProfile={normalizedProfile}>{children}</PublicShell>
 }

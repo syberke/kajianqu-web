@@ -3,15 +3,7 @@
 // Poppins adalah font utama di seluruh project KajianQu
 
 import type { Metadata } from "next"
-import { Poppins } from "next/font/google"
 import './globals.css'
-// Load Poppins dengan semua weight yang dipakai di Figma
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  display: "swap",
-})
 
 export const metadata: Metadata = {
   title: "KajianQu — Dekat dengan Al-Qur'an, Tenang di Hati",
@@ -25,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="id" className={poppins.variable}>
+    <html lang="id">
       <body className="antialiased font-poppins">
         {children}
       </body>

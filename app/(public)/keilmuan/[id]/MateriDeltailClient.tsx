@@ -146,7 +146,7 @@ export default function MateriDetailClient({ materi }: { materi: any }) {
 
         {/* ── BREADCRUMB ── */}
         <div className="flex items-center gap-2 text-sm">
-          <Link href="/materi" className="text-gray-500 hover:text-[#1a7a53] transition-colors">
+          <Link href="/keilmuan" className="text-gray-500 hover:text-[#1a7a53] transition-colors">
             {kategori}
           </Link>
           <ChevronRight size={14} className="text-gray-400" />
