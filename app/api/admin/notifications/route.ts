@@ -1,50 +1,32 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+
+import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth/require-admin'
 
 export async function GET() {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data, error } = await supabaseAdmin
-      .from('notifications')
-      .select('*')
-      .order('created_at', {
-        ascending: false
-      })
-      .limit(20)
-
-    if (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: error.message
-        },
-        {
-          status: 500
-        }
-      )
-    }
+    const notifications = await db.notification.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    })
 
     return NextResponse.json({
       success: true,
-      notifications: data || [],
-      unreadCount:
-        data?.filter(
-          item => !item.is_read
-        ).length || 0
+      notifications: notifications.map((item) => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        description: item.description,
+        is_read: item.isRead,
+        created_at: item.createdAt.toISOString(),
+      })),
+      unreadCount: notifications.filter((item) => !item.isRead).length,
     })
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message
-      },
-      {
-        status: 500
-      }
-    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Gagal mengambil notifikasi'
+    return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }

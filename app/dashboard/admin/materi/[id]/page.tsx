@@ -1,60 +1,48 @@
-import { requireRole } from '@/lib/helpers/auth'
-import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
-import DetailMateriClient from './detailmatericlient'
 
-export default async function DetailMateriPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  // Proteksi Admin
+import DetailMateriClient from './detailmatericlient'
+import { db } from '@/lib/db'
+import { requireRole } from '@/lib/helpers/auth'
+
+export default async function DetailMateriPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole('admin')
   const { id } = await params
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const material = await db.material.findUnique({
+    where: { id },
+    include: {
+      asatidz: { select: { nama: true, email: true } },
+      keilmuan: { select: { nama: true } },
+    },
+  })
+
+  if (!material) notFound()
+
+  return (
+    <DetailMateriClient
+      materi={{
+        id: material.id,
+        type: material.type,
+        keilmuan_id: material.keilmuanId,
+        title: material.title,
+        slug: material.slug,
+        description: material.description,
+        summary: material.summary,
+        youtube_url: material.youtubeUrl,
+        thumbnail_url: material.thumbnailUrl,
+        asatidz_id: material.asatidzId,
+        is_published: material.isPublished,
+        status: material.reviewStatus,
+        review_note: material.reviewNote,
+        created_at: material.createdAt.toISOString(),
+        updated_at: material.updatedAt.toISOString(),
+        profiles: material.asatidz
+          ? { nama: material.asatidz.nama, email: material.asatidz.email }
+          : null,
+        kategori_nama: material.keilmuan?.nama || 'Kajian Umum',
+        judul: material.title,
+        deskripsi: material.description || material.summary,
+      }}
+    />
   )
-
-  // Mengambil data riil materi, profil asatidz, dan nama keilmuan terkait
-  const { data: material, error } = await supabaseAdmin
-    .from('materials')
-    .select(`
-      id,
-      type,
-      keilmuan_id,
-      title,
-      slug,
-      description,
-      summary,
-      youtube_url,
-      thumbnail_url,
-      asatidz_id,
-      is_published,
-      created_at,
-      updated_at,
-      profiles!materials_asatidz_id_fkey ( nama, email ),
-      keilmuan ( nama )
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error || !material) return notFound()
-
-  // Normalisasi bentuk objek untuk menghidupkan UI
-  const keilmuanData = Array.isArray(material.keilmuan) ? material.keilmuan[0] : material.keilmuan
-  
-  // FIX: Menghapus baris 'material.status' yang menyebabkan error TypeScript 2339
-  const mappedStatus = material.is_published ? 'approved' : 'pending' 
-
-  const formattedMateri = {
-    ...material,
-    status: mappedStatus, // Menggunakan hasil mapping dari flag is_published
-    kategori_nama: keilmuanData?.nama || 'Kajian Umum',
-    judul: material.title,
-    deskripsi: material.description || material.summary
-  }
-
-  return <DetailMateriClient materi={formattedMateri} />
 }

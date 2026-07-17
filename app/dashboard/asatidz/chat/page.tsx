@@ -1,147 +1,119 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase/client';
-import { ChatService } from '../../../../service/chat';
-import { Send, Search, MoreVertical, Phone, Video, Smile,MessageSquare } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { LoaderCircle, MessageCircle, Search, Send } from 'lucide-react'
 
-export default function ChatAsatidzPage() {
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [inbox, setInbox] = useState<any[]>([]);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+import { ChatService, type ChatConversation, type ChatMessage, type ChatUser } from '../../../../service/chat'
 
-  // Auto scroll ke bawah saat ada pesan baru
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+export default function AsatidzChatPage() {
+  const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [selected, setSelected] = useState<ChatUser | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [search, setSearch] = useState('')
+  const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Load Inbox
-  useEffect(() => {
-    async function loadInbox() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const data = await ChatService.getInbox(user.id);
-        setInbox(data || []);
+    let cancelled = false
+    const load = async () => {
+      try {
+        const data = await ChatService.getInbox()
+        if (!cancelled) setConversations(data)
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Gagal memuat chat')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
-    loadInbox();
-  }, []);
+    void load()
+    return () => { cancelled = true }
+  }, [])
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedStudent) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await ChatService.sendMessage(user.id, selectedStudent.id, newMessage);
-      setMessages([...messages, { sender_id: user.id, content: newMessage, created_at: new Date() }]);
-      setNewMessage('');
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return query ? conversations.filter((item) => (item.user.nama ?? '').toLowerCase().includes(query)) : conversations
+  }, [conversations, search])
+
+  const openConversation = async (user: ChatUser) => {
+    setSelected(user)
+    setError('')
+    try {
+      const data = await ChatService.getChatHistory(user.id)
+      setSelected(data.counterpart)
+      setMessages(data.messages)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Gagal memuat percakapan')
     }
-  };
+  }
+
+  const send = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!selected || !draft.trim() || sending) return
+    setSending(true)
+    setError('')
+    try {
+      const message = await ChatService.sendMessage(selected.id, draft)
+      setMessages((items) => [...items, message])
+      setDraft('')
+      setConversations(await ChatService.getInbox())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Gagal mengirim pesan')
+    } finally {
+      setSending(false)
+    }
+  }
 
   return (
-    <div className="h-[calc(100vh-160px)] flex bg-white rounded-[48px] overflow-hidden border border-gray-100 shadow-sm">
-      
-      {/* LEFT: Daftar Chat (Inbox) */}
-      <div className="w-96 border-r border-gray-50 flex flex-col">
-        <div className="p-8 space-y-6">
-          <h3 className="text-2xl font-black text-emerald-950 tracking-tighter">Pesan Santri</h3>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-            <input type="text" placeholder="Cari santri..." className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-2xl text-xs font-bold outline-none" />
-          </div>
+    <div className="grid min-h-[70vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[320px_1fr]">
+      <aside className="border-b border-slate-200 lg:border-b-0 lg:border-r">
+        <div className="p-5">
+          <h1 className="text-xl font-black text-emerald-950">Pesan</h1>
+          <label className="relative mt-4 block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari percakapan..." className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-emerald-500" />
+          </label>
         </div>
-        
-        <div className="flex-1 overflow-y-auto px-4 space-y-2">
-          {/* Contoh Item Chat */}
-          <button 
-            onClick={() => setSelectedStudent({id: '1', nama: 'Ahmad Fulan'})}
-            className={`w-full flex items-center gap-4 p-4 rounded-[24px] transition-all ${selectedStudent?.id === '1' ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}
-          >
-            <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white font-black">A</div>
-            <div className="text-left flex-1 min-w-0">
-              <p className="font-black text-emerald-950 text-sm truncate">Ahmad Fulan</p>
-              <p className="text-[10px] text-gray-400 font-bold truncate">Ustadz, izin bertanya ttg...</p>
-            </div>
-            <span className="text-[8px] font-black text-gray-300 uppercase">12m</span>
-          </button>
+        <div className="max-h-[58vh] overflow-y-auto border-t border-slate-100 p-2">
+          {loading ? <div className="grid h-40 place-items-center"><LoaderCircle className="animate-spin text-emerald-700" /></div> : visible.length === 0 ? (
+            <div className="px-5 py-12 text-center text-sm text-slate-500"><MessageCircle className="mx-auto mb-3 text-slate-300" size={30} />Belum ada percakapan.</div>
+          ) : visible.map((item) => (
+            <button key={item.user.id} type="button" onClick={() => void openConversation(item.user)} className={`w-full rounded-2xl p-4 text-left transition ${selected?.id === item.user.id ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+              <p className="font-bold text-slate-900">{item.user.nama || 'Pengguna KajianQu'}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-slate-500">{item.lastMessage.mine ? 'Anda: ' : ''}{item.lastMessage.content}</p>
+            </button>
+          ))}
         </div>
-      </div>
+      </aside>
 
-      {/* RIGHT: Area Percakapan */}
-      <div className="flex-1 flex flex-col bg-gray-50/30">
-        {selectedStudent ? (
+      <section className="flex min-h-[60vh] flex-col">
+        {selected ? (
           <>
-            {/* Header Chat */}
-            <div className="p-6 bg-white border-b border-gray-50 flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#064E3B] rounded-2xl flex items-center justify-center text-white font-black">
-                  {selectedStudent.nama[0]}
+            <header className="border-b border-slate-200 px-5 py-4">
+              <p className="font-black text-slate-900">{selected.nama || 'Pengguna KajianQu'}</p>
+              <p className="text-xs capitalize text-slate-500">{selected.role || 'pengguna'}</p>
+            </header>
+            {error && <p className="mx-5 mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <div className="flex-1 space-y-3 overflow-y-auto p-5">
+              {messages.length === 0 ? <p className="py-16 text-center text-sm text-slate-400">Belum ada pesan. Mulai percakapan di bawah.</p> : messages.map((message) => (
+                <div key={message.id} className={`flex ${message.mine ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${message.mine ? 'bg-[#1D794E] text-white' : 'bg-slate-100 text-slate-700'}`}>
+                    <p>{message.content}</p>
+                    <p className={`mt-1 text-[10px] ${message.mine ? 'text-white/60' : 'text-slate-400'}`}>{new Date(message.createdAt).toLocaleString('id-ID')}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-black text-emerald-950 text-sm">{selectedStudent.nama}</p>
-                  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Online
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-gray-300">
-                <button className="p-3 hover:bg-gray-50 rounded-xl transition-all"><Phone size={20} /></button>
-                <button className="p-3 hover:bg-gray-50 rounded-xl transition-all"><Video size={20} /></button>
-                <button className="p-3 hover:bg-gray-50 rounded-xl transition-all"><MoreVertical size={20} /></button>
-              </div>
+              ))}
             </div>
-
-            {/* Bubble Messages */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              <div className="flex justify-start">
-                <div className="max-w-[70%] bg-white p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-gray-600">
-                  Ustadz, apakah hukumnya tahlilan itu bid'ah?
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <div className="max-w-[70%] bg-[#064E3B] p-4 rounded-2xl rounded-tr-none shadow-lg text-sm font-medium text-white">
-                  Pertanyaan bagus, mari kita bahas dari sudut pandang fiqh empat madzhab...
-                </div>
-              </div>
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input Chat */}
-            <div className="p-8 bg-white border-t border-gray-50">
-              <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-[24px]">
-                <button className="p-3 text-gray-400"><Smile size={20} /></button>
-                <input 
-                  type="text" 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Ketik balasan..." 
-                  className="flex-1 bg-transparent border-none outline-none text-sm font-bold text-emerald-950"
-                />
-                <button 
-                  onClick={handleSendMessage}
-                  className="bg-[#064E3B] text-white p-4 rounded-2xl shadow-lg hover:bg-emerald-800 transition-all"
-                >
-                  <Send size={20} />
-                </button>
-              </div>
-            </div>
+            <form onSubmit={send} className="flex gap-3 border-t border-slate-200 p-4">
+              <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tulis pesan..." className="h-12 flex-1 rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" />
+              <button type="submit" disabled={sending || !draft.trim()} className="grid h-12 w-12 place-items-center rounded-xl bg-[#1D794E] text-white disabled:opacity-50">{sending ? <LoaderCircle className="animate-spin" size={18} /> : <Send size={18} />}</button>
+            </form>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
-            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-              <MessageSquare size={40} />
-            </div>
-            <h4 className="font-black text-emerald-950 text-xl tracking-tighter">Pilih Pesan</h4>
-            <p className="text-sm text-gray-400 font-medium max-w-xs">Pilih salah satu santri di sebelah kiri untuk mulai berdiskusi.</p>
-          </div>
+          <div className="grid flex-1 place-items-center p-8 text-center text-slate-500"><div><MessageCircle className="mx-auto mb-4 text-slate-300" size={42} /><p className="font-semibold">Pilih percakapan untuk membaca dan membalas pesan.</p>{error && <p className="mt-3 text-sm text-red-600">{error}</p>}</div></div>
         )}
-      </div>
+      </section>
     </div>
-  );
+  )
 }

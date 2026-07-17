@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Profile {
+  id                String                   @id @db.Uuid
+  nama              String?
+  email             String?
+  fotoUrl           String?                  @map("foto_url")
+  noWa              String?                  @map("no_wa")
+  bank              String?
+  noRekening        String?                  @map("no_rekening")
+  role              String?
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  asatidzProfile    AsatidzProfile?
+  materials         Material[]               @relation("MaterialAsatidz")
+  liveSessions      LiveSession[]            @relation("LiveSessionAsatidz")
+  enrollments       PrivateClassEnrollment[] @relation("EnrollmentStudent")
+  sentMessages      Message[]                @relation("MessageSender")
+  receivedMessages  Message[]                @relation("MessageReceiver")
+  donations         Donation[]               @relation("DonationUser")
+  privateClassPages PrivateClassPage[]        @relation("PrivateClassAsatidz")
+
+  @@index([role])
+  @@map("profiles")
+}
+
+model AsatidzProfile {
+  id                 String  @id @db.Uuid
+  bidang             String?
+  latarBelakang      String? @map("latar_belakang")
+  approved           Boolean @default(false)
+  cvUrl              String? @map("cv_url")
+  sertifikat         String?
+  keahlian           String?
+  pengalamanMengajar String? @map("pengalaman_mengajar")
+  bio                 String?
+  profile             Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@index([approved])
+  @@map("asatidz_profiles")
+}
+
+model QuranSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  mode            String
+  surahId         Int      @map("surah_id")
+  surahName       String   @map("surah_name")
+  ayahStart       Int      @map("ayah_start")
+  ayahEnd         Int      @map("ayah_end")
+  totalWords      Int      @map("total_words")
+  correctWords    Int      @map("correct_words")
+  accuracy        Float
+  mistakes        Json
+  transcript      String?
+  durationSeconds Int?     @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  mistakeRows     QuranMistake[]
+
+  @@index([userId, createdAt])
+  @@map("quran_sessions")
+}
+
+model QuranMistake {
+  id          String       @id @default(uuid()) @db.Uuid
+  sessionId   String       @map("session_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  surahId     Int          @map("surah_id")
+  ayahNumber  Int          @map("ayah_number")
+  wordArabic  String       @map("word_arabic")
+  wordSpoken  String       @map("word_spoken")
+  kind        String?
+  confidence  Float?
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  session     QuranSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@map("quran_mistakes")
+}
+
+model Notification {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String?
+  title       String
+  description String?
+  message     String?
+  recipientId String?  @map("recipient_id") @db.Uuid
+  actionUrl   String?  @map("action_url")
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([recipientId, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Setting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("settings")
+}
+
+model ActivityLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  type         String
+  title        String
+  description  String?
+  userId       String?  @map("user_id") @db.Uuid
+  relatedId    String?  @map("related_id") @db.Uuid
+  relatedTable String?  @map("related_table")
+  status       String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model DonationMethod {
+  id            String     @id @default(uuid()) @db.Uuid
+  methodType    String     @map("method_type")
+  bankName      String?    @map("bank_name")
+  accountNumber String?    @map("account_number")
+  accountName   String?    @map("account_name")
+  qrisImageUrl  String?    @map("qris_image_url")
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  donations     Donation[]
+
+  @@index([isActive, createdAt])
+  @@map("donation_methods")
+}
+
+model Donation {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String?         @map("user_id") @db.Uuid
+  category        String?
+  nominal         Decimal         @db.Decimal(18, 2)
+  methodId        String?         @map("method_id") @db.Uuid
+  donorName       String?         @map("donor_name")
+  note            String?
+  paymentStatus   String?         @map("payment_status")
+  paymentProofUrl String?         @map("payment_proof_url")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            Profile?        @relation("DonationUser", fields: [userId], references: [id])
+  method          DonationMethod? @relation(fields: [methodId], references: [id])
+
+  @@index([paymentStatus, createdAt])
+  @@index([userId, createdAt])
+  @@map("donations")
+}
+
+model DonationProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  price     Decimal  @db.Decimal(18, 2)
+  image     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([isActive, createdAt])
+  @@map("donation_products")
+}
+
+model Keilmuan {
+  id        String     @id @default(uuid()) @db.Uuid
+  nama      String
+  deskripsi String?
+  isActive  Boolean    @default(true) @map("is_active")
+  materials Material[]
+
+  @@index([isActive])
+  @@map("keilmuan")
+}
+
+model Material {
+  id           String                   @id @default(uuid()) @db.Uuid
+  title        String
+  slug         String
+  summary      String?
+  description  String?
+  youtubeUrl   String?                  @map("youtube_url")
+  thumbnailUrl String?                  @map("thumbnail_url")
+  level        String?
+  type         String?
+  isPublished  Boolean                  @default(false) @map("is_published")
+  reviewStatus String                   @default("pending") @map("review_status")
+  reviewNote   String?                  @map("review_note")
+  keilmuanId   String?                  @map("keilmuan_id") @db.Uuid
+  asatidzId    String?                  @map("asatidz_id") @db.Uuid
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  keilmuan     Keilmuan?                @relation(fields: [keilmuanId], references: [id])
+  asatidz      Profile?                 @relation("MaterialAsatidz", fields: [asatidzId], references: [id])
+  quizzes      Quiz[]
+  enrollments  PrivateClassEnrollment[]
+
+  @@index([asatidzId, createdAt])
+  @@index([keilmuanId])
+  @@index([isPublished, createdAt])
+  @@index([reviewStatus, createdAt])
+  @@map("materials")
+}
+
+model PrivateClassEnrollment {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  status     String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  student    Profile  @relation("EnrollmentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([materialId, createdAt])
+  @@index([studentId, createdAt])
+  @@map("private_class_enrollments")
+}
+
+model PrivateClassPage {
+  id        String   @id @default(uuid()) @db.Uuid
+  asatidzId String   @map("asatidz_id") @db.Uuid
+  title     String
+  zoomLink  String   @map("zoom_link")
+  passcode  String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  asatidz   Profile  @relation("PrivateClassAsatidz", fields: [asatidzId], references: [id], onDelete: Cascade)
+
+  @@index([asatidzId, createdAt])
+  @@index([isActive, createdAt])
+  @@map("private_class_pages")
+}
+
+model Quiz {
+  id          String         @id @default(uuid()) @db.Uuid
+  materialId  String         @map("material_id") @db.Uuid
+  title       String
+  description String?
+  material    Material       @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+
+  @@index([materialId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String @id @default(uuid()) @db.Uuid
+  quizId        String @map("quiz_id") @db.Uuid
+  question      String
+  optionA       String @map("option_a")
+  optionB       String @map("option_b")
+  optionC       String @map("option_c")
+  optionD       String @map("option_d")
+  correctAnswer String @map("correct_answer")
+  explanation   String?
+  orderNo       Int?   @map("order_no")
+  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, orderNo])
+  @@map("quiz_questions")
+}
+
+model LiveSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  youtubeUrl  String?   @map("youtube_url")
+  streamUrl   String?   @map("stream_url")
+  status      String?
+  asatidzId   String?   @map("asatidz_id") @db.Uuid
+  scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  asatidz     Profile?  @relation("LiveSessionAsatidz", fields: [asatidzId], references: [id])
+
+  @@index([asatidzId])
+  @@index([status, scheduledAt])
+  @@map("live_sessions")
+}
+
+model Message {
+  id         String   @id @default(uuid()) @db.Uuid
+  senderId   String   @map("sender_id") @db.Uuid
+  receiverId String   @map("receiver_id") @db.Uuid
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  sender     Profile  @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   Profile  @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("messages")
+}

@@ -1,32 +1,30 @@
-import { createClient } from '@supabase/supabase-js'
 import { createExcel } from '@/lib/excel/exportExcel'
+import { requireAdmin } from '@/lib/auth/require-admin'
+import { db } from '@/lib/db'
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const admin = await requireAdmin()
+  if (!admin) return new Response('Unauthorized', { status: 401 })
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
+  const rows = await db.profile.findMany({
+    select: { nama: true, email: true, role: true },
+    orderBy: { nama: 'asc' },
+  })
 
   const buffer = await createExcel(
     'Users',
     [
       { header: 'Nama', key: 'nama', width: 30 },
       { header: 'Email', key: 'email', width: 30 },
-      { header: 'Role', key: 'role', width: 15 }
+      { header: 'Role', key: 'role', width: 15 },
     ],
-    data || []
+    rows,
   )
 
   return new Response(buffer, {
     headers: {
-      'Content-Type':
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition':
-        'attachment; filename=users.xlsx'
-    }
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename=users.xlsx',
+    },
   })
 }

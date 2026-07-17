@@ -1,16 +1,23 @@
 'use client'
 
-
 import { useState } from 'react'
 import Link from 'next/link'
-import { Share2, Play } from 'lucide-react'
+import { BookOpen, Play, Share2 } from 'lucide-react'
 
-const imgKelas = "https://www.figma.com/api/mcp/asset/7457a6f1-a3f4-4def-8df5-5b4f83e022ee"
+interface ClassItem {
+  id: string
+  title: string
+  description?: string | null
+  youtube_url?: string | null
+  stream_url?: string | null
+  status?: string | null
+  asatidz?: { nama?: string | null; foto_url?: string | null } | null
+}
 
 interface Props {
-  item:         any
-  type:         'live' | 'tematik'
-  relatedItems: any[]
+  item: ClassItem
+  type: 'live' | 'tematik'
+  relatedItems: ClassItem[]
 }
 
 function getYouTubeId(url: string): string | null {
@@ -19,154 +26,116 @@ function getYouTubeId(url: string): string | null {
   return match ? match[1] : null
 }
 
-function getYouTubeThumb(url: string): string {
+function getYouTubeThumb(url: string): string | null {
   const id = getYouTubeId(url)
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : imgKelas
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
 }
 
-function RelatedCard({ item, type }: { item: any; type: 'live' | 'tematik' }) {
-  const thumb  = getYouTubeThumb(item.youtube_url || item.stream_url || '')
-  const ustadz = item.asatidz?.nama || 'Ustadz'
-  const label  = type === 'live' ? 'Live Stream' : 'Podcast'
-  const href   = `/kelas/${type}/${item.id}`
+function MediaCover({ item, compact = false }: { item: ClassItem; compact?: boolean }) {
+  const source = item.youtube_url || item.stream_url || ''
+  const thumb = getYouTubeThumb(source)
+
+  if (thumb) {
+    return <img src={thumb} alt={item.title} className="h-full w-full object-cover" />
+  }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow group">
-      <div className="relative h-[150px] overflow-hidden rounded-t-2xl">
-        <img src={thumb} alt={item.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = imgKelas }}
-        />
-        <div className="absolute bottom-2 left-2">
-          <span className="bg-[#1a7a53] text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full">{ustadz}</span>
-        </div>
-      </div>
-      <div className="p-3 space-y-1.5">
-        <h4 className="font-bold text-gray-900 text-sm line-clamp-2">{item.title || 'Hukumnya Tahlilan'}</h4>
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 bg-[#1a7a53] rounded-full" />
-          <span className="text-gray-500 text-xs">{label}</span>
-        </div>
-        <p className="text-gray-500 text-xs line-clamp-2">{item.description || 'Membahas Seputar Tahlilan...'}</p>
-        <Link href={href} className="inline-flex items-center gap-1 text-[#1a7a53] font-semibold text-xs hover:gap-2 transition-all">
-          Ikuti Kelas <span>›</span>
-        </Link>
-      </div>
+    <div className="grid h-full w-full place-items-center bg-gradient-to-br from-emerald-950 to-emerald-700 text-emerald-100">
+      <BookOpen size={compact ? 28 : 48} />
     </div>
+  )
+}
+
+function RelatedCard({ item, type }: { item: ClassItem; type: 'live' | 'tematik' }) {
+  const label = type === 'live' ? 'Live Stream' : 'Kajian Tematik'
+
+  return (
+    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="relative h-36 overflow-hidden"><MediaCover item={item} compact /></div>
+      <div className="space-y-2 p-4">
+        <p className="text-xs font-semibold text-emerald-700">{item.asatidz?.nama || 'Asatidz KajianQu'}</p>
+        <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{item.title}</h3>
+        <p className="text-xs text-slate-500">{label}</p>
+        {item.description && <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">{item.description}</p>}
+        <Link href={`/kelas/${type}/${item.id}`} className="inline-flex text-xs font-bold text-[#1a7a53] hover:underline">Lihat kelas</Link>
+      </div>
+    </article>
   )
 }
 
 export default function KelasDetailClient({ item, type, relatedItems }: Props) {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [copied,    setCopied]    = useState(false)
-
-  const videoUrl   = item.youtube_url || item.stream_url || ''
-  const youtubeId  = getYouTubeId(videoUrl)
-  const thumb      = getYouTubeThumb(videoUrl)
+  const [copied, setCopied] = useState(false)
+  const videoUrl = item.youtube_url || item.stream_url || ''
+  const youtubeId = getYouTubeId(videoUrl)
   const breadcrumb = type === 'live' ? 'Live Stream' : 'Kajian Tematik'
-
-  const dummy = Array(6).fill({
-    id: 'dummy', title: 'Hukumnya Tahlilan',
-    description: 'Membahas Seputar Tahlilan, dan pertan...',
-    asatidz: { nama: 'Ust. Adi Hidayat' }
-  })
-  const displayRelated = relatedItems.length > 0 ? relatedItems : dummy
 
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      window.setTimeout(() => setCopied(false), 2000)
     } catch {
-      if (navigator.share) navigator.share({ title: item.title, url: window.location.href })
+      if (navigator.share) await navigator.share({ title: item.title, url: window.location.href })
     }
   }
 
   return (
-    // pt-[72px] karena navbar fixed height 72px
-    <div className="bg-[#f5faf8] min-h-screen pt-[72px] font-['Poppins',sans-serif]">
-      <div className="max-w-[860px] mx-auto px-6 py-10 space-y-8">
-
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/kelas" className="hover:text-[#1a7a53] transition-colors">{breadcrumb}</Link>
-          <span className="text-gray-300">›</span>
-          <span className="text-gray-800 font-semibold line-clamp-1">{item.title || 'Hukumnya Tahlilan'}</span>
+    <div className="min-h-screen bg-[#f5faf8] pt-[72px]">
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Link href="/kelas" className="transition hover:text-[#1a7a53]">{breadcrumb}</Link>
+          <span className="text-slate-300">›</span>
+          <span className="line-clamp-1 font-semibold text-slate-800">{item.title}</span>
         </div>
 
-        {/* Judul */}
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-          {item.title || 'Hukumnya Tahlilan Bersama Ust. Adi Hidayat'}
-        </h1>
+        <div>
+          <p className="text-sm font-semibold text-emerald-700">{item.asatidz?.nama || 'Asatidz KajianQu'}</p>
+          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-900 md:text-4xl">{item.title}</h1>
+          {item.description && <p className="mt-4 max-w-3xl text-base leading-relaxed text-slate-600">{item.description}</p>}
+        </div>
 
-        {/* Deskripsi panjang (hanya tematik) */}
-        {type === 'tematik' && item.description && (
-          <p className="text-gray-600 leading-relaxed text-base">{item.description}</p>
-        )}
-
-        {/* Video Player */}
-        <div className="rounded-2xl overflow-hidden shadow-xl bg-black relative">
+        <div className="relative aspect-video overflow-hidden rounded-3xl bg-slate-950 shadow-xl">
           {isPlaying && youtubeId ? (
-            <div className="aspect-video">
-              <iframe
-                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={item.title}
+            />
           ) : (
-            <div className="relative aspect-video cursor-pointer group" onClick={() => youtubeId && setIsPlaying(true)}>
-              <img src={thumb} alt={item.title}
-                className="w-full h-full object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).src = imgKelas }}
-              />
-              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4">
+            <button type="button" onClick={() => youtubeId && setIsPlaying(true)} className="group relative h-full w-full" disabled={!youtubeId}>
+              <MediaCover item={item} />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition group-hover:bg-black/35">
                 {youtubeId ? (
-                  <>
-                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                      <Play size={24} className="text-white ml-1" fill="white" />
-                    </div>
-                    <span className="text-white font-bold text-xl">Youtube</span>
-                  </>
+                  <span className="grid h-16 w-16 place-items-center rounded-full bg-red-600 text-white shadow-2xl transition group-hover:scale-105"><Play size={25} fill="currentColor" /></span>
                 ) : (
-                  <p className="text-white/60 text-sm">Video belum tersedia</p>
+                  <span className="rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-white/80">Video belum tersedia</span>
                 )}
-              </div>
-            </div>
+              </span>
+            </button>
           )}
         </div>
 
-        {/* Tombol Tonton + Bagikan */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => youtubeId && setIsPlaying(true)}
-            disabled={!youtubeId}
-            className="flex-1 bg-[#1a7a53] text-white font-semibold py-4 rounded-xl hover:bg-[#15613f] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
-          >
-            Tonton Sekarang
-          </button>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 border border-gray-200 text-gray-700 font-semibold px-6 py-4 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
-          >
-            {copied ? '✓ Disalin!' : <><Share2 size={16} /> Bagikan</>}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button type="button" onClick={() => youtubeId && setIsPlaying(true)} disabled={!youtubeId} className="flex-1 rounded-xl bg-[#1a7a53] py-4 font-bold text-white transition hover:bg-[#15613f] disabled:cursor-not-allowed disabled:opacity-50">Tonton Sekarang</button>
+          <button type="button" onClick={() => void handleShare()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-4 font-semibold text-slate-700 transition hover:bg-slate-50">
+            <Share2 size={16} /> {copied ? 'Disalin' : 'Bagikan'}
           </button>
         </div>
 
-        {/* Related */}
-        <div className="space-y-5 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Temukan Kajian Lainnya</h2>
-            <Link href="/kelas" className="text-[#1a7a53] text-sm font-semibold hover:underline">Lihat Semua</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {displayRelated.slice(0, 6).map((rel: any, i: number) => (
-              <RelatedCard key={rel.id + i} item={rel} type={type} />
-            ))}
-          </div>
-        </div>
-
+        {relatedItems.length > 0 && (
+          <section className="space-y-5 pt-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-black text-slate-900">Temukan Kajian Lainnya</h2>
+              <Link href="/kelas" className="text-sm font-semibold text-[#1a7a53] hover:underline">Lihat Semua</Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {relatedItems.slice(0, 6).map((related) => <RelatedCard key={related.id} item={related} type={type} />)}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )

@@ -1,146 +1,205 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { MateriService } from '../../../../service/materi';
-import { supabase } from '@/lib/supabase/client';
-import { 
-  Plus, 
-  Search, 
-  Eye, 
-  Trash2, 
-  CheckCircle, 
-  Clock, 
-  ChevronRight,
-  MoreVertical,
-  BookOpen
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import {
+  AlertCircle,
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
+
+import { MateriService, type AsatidzMaterial } from '../../../../service/materi'
 
 export default function ManajemenMateriAsatidz() {
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [materials, setMaterials] = useState<AsatidzMaterial[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        try {
-          const data = await MateriService.getAsatidzMaterials(user.id);
-          setMaterials(data || []);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
+      try {
+        const data = await MateriService.getAsatidzMaterials()
+        if (!cancelled) setMaterials(data)
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(error instanceof Error ? error.message : 'Gagal memuat materi')
         }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
-    loadData();
-  }, []);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus materi ini?')) {
-      await MateriService.deleteMaterial(id);
-      setMaterials(materials.filter(m => m.id !== id));
+    void loadData()
+    return () => {
+      cancelled = true
     }
-  };
+  }, [])
 
-  const filteredMaterials = materials.filter(m => 
-    m.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDelete = async (material: AsatidzMaterial) => {
+    const confirmed = window.confirm(`Hapus materi “${material.title}”? Tindakan ini tidak bisa dibatalkan.`)
+    if (!confirmed) return
+
+    setDeletingId(material.id)
+    setErrorMessage('')
+    try {
+      await MateriService.deleteMaterial(material.id)
+      setMaterials((items) => items.filter((item) => item.id !== material.id))
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Gagal menghapus materi')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filteredMaterials = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+    if (!query) return materials
+
+    return materials.filter((material) =>
+      `${material.title} ${material.summary ?? ''} ${material.keilmuan?.nama ?? ''}`
+        .toLowerCase()
+        .includes(query),
+    )
+  }, [materials, searchTerm])
 
   return (
-    <div className="space-y-8">
-      {/* Banner Section - Sesuai Gambar */}
-      <div className="bg-[#064E3B] rounded-[32px] p-8 text-white flex justify-between items-center shadow-xl relative overflow-hidden">
-        <div className="relative z-10">
-          <h2 className="text-2xl font-black tracking-tight">Manajemen Materi</h2>
-          <p className="text-emerald-100/60 text-sm font-medium mt-1">Kirim dan kelola materi kajian Anda di sini</p>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <section className="relative overflow-hidden rounded-3xl bg-[#064E3B] p-6 text-white shadow-xl sm:p-8">
+        <div className="relative z-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Ruang Asatidz</p>
+            <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Manajemen Materi</h1>
+            <p className="mt-2 text-sm text-emerald-100/70">Buat dan kelola materi kajian yang terhubung ke akun Asatidz Anda.</p>
+          </div>
+          <Link
+            href="/dashboard/asatidz/keilmuan/new"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300/20 bg-[#1D794E] px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-600"
+          >
+            <Plus size={18} /> Buat Materi Baru
+          </Link>
         </div>
-        <button className="relative z-10 bg-[#1D794E] hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg border border-emerald-400/20">
-          <Plus size={18} strokeWidth={3} /> Buat Materi Baru
-        </button>
-        <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-      </div>
+        <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/5 blur-xl" />
+      </section>
 
-      {/* Riwayat Table Section */}
-      <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h3 className="text-xl font-black text-emerald-950 tracking-tighter">Riwayat Materi</h3>
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-            <input 
-              type="text" 
-              placeholder="Cari kajian..." 
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold placeholder:text-gray-300 focus:ring-2 focus:ring-emerald-500 transition-all"
+      {errorMessage && (
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 shrink-0" size={18} />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+        <div className="flex flex-col justify-between gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-center">
+          <div>
+            <h2 className="text-xl font-black text-emerald-950">Riwayat Materi</h2>
+            <p className="mt-1 text-sm text-slate-500">{materials.length} materi tersimpan di akun Anda.</p>
+          </div>
+          <label className="relative block w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <input
+              type="search"
+              placeholder="Cari judul, ringkasan, bidang..."
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
             />
-          </div>
+          </label>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-y-3">
-            <thead>
-              <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4">
-                <th className="pb-4 pl-6">Mapel</th>
-                <th className="pb-4">Judul Materi</th>
-                <th className="pb-4">Kitab</th>
-                <th className="pb-4 text-center">Status</th>
-                <th className="pb-4 text-right pr-6">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMaterials.map((m) => (
-                <tr key={m.id} className="group bg-white hover:bg-emerald-50/30 transition-all">
-                  <td className="py-5 pl-6 rounded-l-[24px] border-y border-l border-gray-50">
-                    <span className="text-emerald-600 font-black text-xs uppercase">{m.keilmuan?.nama || 'Umum'}</span>
-                  </td>
-                  <td className="py-5 border-y border-gray-50">
-                    <p className="font-bold text-emerald-950 text-sm">{m.title}</p>
-                  </td>
-                  <td className="py-5 border-y border-gray-50">
-                    <p className="text-xs text-gray-400 font-medium">{m.summary || 'Safinatun Najah'}</p>
-                  </td>
-                  <td className="py-5 border-y border-gray-50">
-                    <div className="flex justify-center">
-                      <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase">
-                        <CheckCircle size={12} /> Verified
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-5 pr-6 rounded-r-[24px] border-y border-r border-gray-50 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 shadow-sm">
-                        <Eye size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(m.id)}
-                        className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="grid min-h-64 place-items-center">
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" />
+              <p className="mt-4 text-sm font-semibold text-slate-500">Memuat materi...</p>
+            </div>
+          </div>
+        ) : filteredMaterials.length === 0 ? (
+          <div className="my-6 rounded-3xl border-2 border-dashed border-slate-200 px-6 py-16 text-center">
+            <BookOpen size={42} className="mx-auto text-slate-300" />
+            <p className="mt-4 font-bold text-slate-700">{searchTerm ? 'Materi tidak ditemukan' : 'Belum ada materi'}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {searchTerm ? 'Coba gunakan kata kunci lain.' : 'Mulai dengan membuat materi pertama Anda.'}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-4">Bidang</th>
+                  <th className="px-3 py-4">Materi</th>
+                  <th className="px-3 py-4">Dibuat</th>
+                  <th className="px-3 py-4 text-center">Status</th>
+                  <th className="px-3 py-4 text-right">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {loading && (
-          <div className="py-20 text-center space-y-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-emerald-600 mx-auto"></div>
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Menarik Data...</p>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredMaterials.map((material) => (
+                  <tr key={material.id} className="group transition hover:bg-emerald-50/40">
+                    <td className="px-3 py-5">
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                        {material.keilmuan?.nama ?? 'Belum dikategorikan'}
+                      </span>
+                    </td>
+                    <td className="max-w-sm px-3 py-5">
+                      <p className="font-bold text-emerald-950">{material.title}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                        {material.summary?.trim() || 'Belum ada ringkasan.'}
+                      </p>
+                    </td>
+                    <td className="px-3 py-5 text-sm text-slate-500">
+                      {new Date(material.createdAt).toLocaleDateString('id-ID', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </td>
+                    <td className="px-3 py-5 text-center">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                        material.isPublished
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {material.isPublished ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+                        {material.isPublished ? 'Dipublikasikan' : 'Draft'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-5">
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/dashboard/asatidz/keilmuan/${material.id}`}
+                          aria-label={`Lihat ${material.title}`}
+                          className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <Eye size={17} />
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={deletingId === material.id}
+                          onClick={() => void handleDelete(material)}
+                          aria-label={`Hapus ${material.title}`}
+                          className="rounded-xl border border-red-100 bg-red-50 p-2 text-red-600 transition hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-
-        {!loading && filteredMaterials.length === 0 && (
-          <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-[32px]">
-             <BookOpen size={40} className="mx-auto text-gray-200 mb-4" />
-             <p className="font-black text-gray-300 uppercase text-xs tracking-[0.2em]">Belum Ada Materi</p>
-          </div>
-        )}
-      </div>
+      </section>
     </div>
-  );
+  )
 }

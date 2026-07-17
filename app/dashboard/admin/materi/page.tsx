@@ -1,57 +1,41 @@
-import { requireRole } from '@/lib/helpers/auth'
-import { createClient } from '@supabase/supabase-js'
 import MateriListClient from './MateriListClient'
+import { db } from '@/lib/db'
+import { requireRole } from '@/lib/helpers/auth'
 
 export default async function MateriPage() {
-  // Proteksi hak akses agar hanya Admin yang bisa masuk halaman ini
   await requireRole('admin')
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const materials = await db.material.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { asatidz: { select: { nama: true } } },
+  })
 
-  // Ambil data materi keilmuan riil dari database Supabase
-  const { data: materials, error } = await supabaseAdmin
-    .from('materials')
-    .select(`
-      id,
-      type,
-      keilmuan_id,
-      title,
-      slug,
-      description,
-      summary,
-      youtube_url,
-      thumbnail_url,
-      asatidz_id,
-      is_published,
-      created_at,
-      updated_at,
-      profiles!materials_asatidz_id_fkey (
-        nama
-      )
-    `)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 border border-red-100 text-red-700 rounded-2xl">
-        <p className="font-bold">Gagal memuat data materi:</p>
-        <p className="text-sm font-mono mt-1">{error.message}</p>
-      </div>
-    )
-  }
+  const initialMateri = materials.map((material) => ({
+    id: material.id,
+    type: material.type,
+    keilmuan_id: material.keilmuanId,
+    title: material.title,
+    slug: material.slug,
+    description: material.description,
+    summary: material.summary,
+    youtube_url: material.youtubeUrl,
+    thumbnail_url: material.thumbnailUrl,
+    asatidz_id: material.asatidzId,
+    is_published: material.isPublished,
+    status: material.reviewStatus,
+    review_note: material.reviewNote,
+    created_at: material.createdAt.toISOString(),
+    updated_at: material.updatedAt.toISOString(),
+    profiles: material.asatidz ? { nama: material.asatidz.nama } : null,
+  }))
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Materi Keilmuan</h1>
-        <p className="text-sm text-gray-500 mt-1">Kelola dan review konten edukasi islami yang masuk ke platform.</p>
+        <p className="mt-1 text-sm text-gray-500">Kelola dan review konten edukasi islami yang masuk ke platform.</p>
       </div>
-
-      {/* Kirim data murni hasil kueri fungsional ke Client Component */}
-      <MateriListClient initialMateri={materials || []} />
+      <MateriListClient initialMateri={initialMateri} />
     </div>
   )
 }

@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-import {
-Settings,
-Wallet,
-Mail,
-Phone,
-Shield
-} from 'lucide-react'
+import { Mail, Phone, Settings, Shield, Wallet } from 'lucide-react'
+
+import { db } from '@/lib/db'
 
 export default async function SettingsPage({
   searchParams,
@@ -13,228 +8,71 @@ export default async function SettingsPage({
   searchParams: Promise<{ success?: string; error?: string }>
 }) {
   const params = await searchParams
-const supabaseAdmin = createClient(
-process.env.NEXT_PUBLIC_SUPABASE_URL!,
-process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+  const settings = await db.setting.findMany()
+  const values = new Map(settings.map((setting) => [setting.key, setting.value]))
+  const getValue = (key: string, fallback = '') => values.get(key) ?? fallback
 
-const { data: settings } = await supabaseAdmin
-.from('settings')
-.select('*')
-
-const getValue = (key: string) =>
-settings?.find(s => s.key === key)?.value || ''
-
-return ( <div className="space-y-6">
-
-  <div>
-    <h1 className="text-2xl font-bold text-gray-800">
-      Pengaturan Sistem
-    </h1>
-    <p className="text-gray-500">
-      Kelola konfigurasi aplikasi KajianQu
-    </p>
-  </div>
-{params.success && (
-  <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl">
-    Pengaturan berhasil disimpan
-  </div>
-)}
-
-{params.error && (
-  <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-    Terjadi kesalahan saat menyimpan pengaturan
-  </div>
-)}
-  <form
-    action="/api/admin/settings/save"
-    method="POST"
-    className="space-y-6"
-  >
-
-    {/* Donation */}
-    <div className="bg-white rounded-xl border p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Wallet size={18} />
-        <h2 className="font-bold">
-          Pengaturan Donasi
-        </h2>
-        
-      </div>
-<p className="text-xs text-gray-500 mt-1">
-  Target saat ini: Rp {Number(getValue('donation_target') || 0).toLocaleString('id-ID')}
-</p>
-      <div className="space-y-4">
-
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-[#064E3B]"><Settings size={21} /></span>
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Target Donasi Bulanan
-          </label>
-
-          <input
-            type="number"
-            name="donation_target"
-            defaultValue={getValue('donation_target')}
-            className="w-full border rounded-lg p-3"
-          />
+          <h1 className="text-2xl font-bold text-slate-900">Pengaturan Sistem</h1>
+          <p className="text-sm text-slate-500">Kelola konfigurasi KajianQu dari satu tempat.</p>
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Donasi Aktif
+      {params.success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">Pengaturan berhasil disimpan.</div>}
+      {params.error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">Terjadi kesalahan saat menyimpan pengaturan.</div>}
+
+      <form action="/api/admin/settings/save" method="POST" className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-2"><Wallet size={18} className="text-[#064E3B]" /><h2 className="font-bold text-slate-900">Donasi</h2></div>
+          <label className="block text-sm font-medium text-slate-700">
+            Target donasi bulanan
+            <input type="number" min="0" name="donation_target" defaultValue={getValue('donation_target', '0')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" />
           </label>
+          <p className="mt-2 text-xs text-slate-500">Target saat ini: Rp {Number(getValue('donation_target', '0')).toLocaleString('id-ID')}</p>
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            Status donasi
+            <select name="donation_enabled" defaultValue={getValue('donation_enabled', 'true')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4">
+              <option value="true">Aktif</option><option value="false">Nonaktif</option>
+            </select>
+          </label>
+        </section>
 
-          <select
-            name="donation_enabled"
-            defaultValue={getValue('donation_enabled')}
-            className="w-full border rounded-lg p-3"
-          >
-            <option value="true">Aktif</option>
-            <option value="false">Nonaktif</option>
-          </select>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-2"><Phone size={18} className="text-[#064E3B]" /><h2 className="font-bold text-slate-900">Support</h2></div>
+          <label className="block text-sm font-medium text-slate-700">
+            Nomor WhatsApp
+            <input type="text" name="support_whatsapp" defaultValue={getValue('support_whatsapp')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" />
+          </label>
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            <span className="inline-flex items-center gap-2"><Mail size={15} /> Email support</span>
+            <input type="email" name="support_email" defaultValue={getValue('support_email')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" />
+          </label>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <div className="mb-5 flex items-center gap-2"><Shield size={18} className="text-[#064E3B]" /><h2 className="font-bold text-slate-900">Status sistem</h2></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">Pendaftaran asatidz
+              <select name="asatidz_registration" defaultValue={getValue('asatidz_registration', 'true')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4">
+                <option value="true">Dibuka</option><option value="false">Ditutup</option>
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">Maintenance mode
+              <select name="maintenance_mode" defaultValue={getValue('maintenance_mode', 'false')} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4">
+                <option value="false">OFF</option><option value="true">ON</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <div className="lg:col-span-2 flex justify-end">
+          <button type="submit" className="rounded-xl bg-[#064E3B] px-6 py-3 font-semibold text-white transition hover:bg-[#043f30]">Simpan Pengaturan</button>
         </div>
-
-      </div>
+      </form>
     </div>
-
-    {/* Support */}
-    <div className="bg-white rounded-xl border p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Phone size={18} />
-        <h2 className="font-bold">
-          Support
-        </h2>
-      </div>
-
-      <div className="space-y-4">
-
-        <input
-          type="text"
-          name="support_whatsapp"
-          defaultValue={getValue('support_whatsapp')}
-          placeholder="Nomor WhatsApp"
-          className="w-full border rounded-lg p-3"
-        />
-
-        <input
-          type="email"
-          name="support_email"
-          defaultValue={getValue('support_email')}
-          placeholder="Email Support"
-          className="w-full border rounded-lg p-3"
-        />
-
-      </div>
-    </div>
-
-{/* System */}
-<div className="bg-white rounded-xl border p-6">
-  <div className="flex items-center gap-2 mb-4">
-    <Shield size={18} />
-    <h2 className="font-bold">
-      Pengaturan Sistem
-    </h2>
-  </div>
-
-  <div className="space-y-4">
-
-    <div>
-      <label className="block text-sm font-medium mb-1">
-        Status Pendaftaran Asatidz
-      </label>
-
-      <select
-        name="asatidz_registration"
-        defaultValue={getValue('asatidz_registration')}
-        className="w-full border rounded-lg p-3"
-      >
-        <option value="true">
-          Dibuka
-        </option>
-
-        <option value="false">
-          Ditutup
-        </option>
-      </select>
-
-      <p className="text-xs text-gray-500 mt-1">
-        Saat ini: {
-          getValue('asatidz_registration') === 'true'
-            ? 'Dibuka'
-            : 'Ditutup'
-        }
-      </p>
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium mb-1">
-        Status Donasi
-      </label>
-
-      <select
-        name="donation_enabled"
-        defaultValue={getValue('donation_enabled')}
-        className="w-full border rounded-lg p-3"
-      >
-        <option value="true">
-          Aktif
-        </option>
-
-        <option value="false">
-          Nonaktif
-        </option>
-      </select>
-
-      <p className="text-xs text-gray-500 mt-1">
-        Saat ini: {
-          getValue('donation_enabled') === 'true'
-            ? 'Aktif'
-            : 'Nonaktif'
-        }
-      </p>
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium mb-1">
-        Maintenance Mode
-      </label>
-
-      <select
-        name="maintenance_mode"
-        defaultValue={getValue('maintenance_mode')}
-        className="w-full border rounded-lg p-3"
-      >
-        <option value="false">
-          OFF
-        </option>
-
-        <option value="true">
-          ON
-        </option>
-      </select>
-
-      <p className="text-xs text-gray-500 mt-1">
-        Saat ini: {
-          getValue('maintenance_mode') === 'true'
-            ? 'ON'
-            : 'OFF'
-        }
-      </p>
-    </div>
-
-  </div>
-</div>
-
-    <button
-      type="submit"
-      className="bg-[#064E3B] text-white px-5 py-3 rounded-lg font-semibold"
-    >
-      Simpan Pengaturan
-    </button>
-
-  </form>
-
-</div>
-
-)
+  )
 }

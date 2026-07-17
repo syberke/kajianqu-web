@@ -1,76 +1,54 @@
-
-
-import { createClient } from '@/supabase/server'
 import { notFound } from 'next/navigation'
+
+import { db } from '@/lib/db'
 import KelasDetailClient from './KelasDetailClient'
 
 interface Props {
-  params: Promise<{ type: string; id: string }>
+  params: Promise<{ id: string }>
 }
 
-export default async function KelasDetailPage({ params }: Props) {
-  const { type, id } = await params
-  const supabase = await createClient()
-
-  let item: any = null
-  let relatedItems: any[] = []
-
-  if (type === 'live') {
-    const { data } = await supabase
-      .from('live_sessions')
-      .select('*, asatidz:asatidz_id(nama, foto_url)')
-      .eq('id', id)
-      .single()
-    item = data
-
-    // Related: live sessions lainnya
-    const { data: related } = await supabase
-      .from('live_sessions')
-      .select('*, asatidz:asatidz_id(nama, foto_url)')
-      .neq('id', id)
-      .limit(6)
-    relatedItems = related ?? []
-
-  } else if (type === 'tematik') {
-    const { data } = await supabase
-      .from('materials')
-      .select('*, asatidz:asatidz_id(nama, foto_url)')
-      .eq('id', id)
-      .eq('type', 'kajian_tematik')
-      .single()
-    item = data
-
-    // Related: materi tematik lainnya
-    const { data: related } = await supabase
-      .from('materials')
-      .select('*, asatidz:asatidz_id(nama, foto_url)')
-      .eq('type', 'kajian_tematik')
-      .eq('is_published', true)
-      .neq('id', id)
-      .limit(6)
-    relatedItems = related ?? []
+function mapMaterial(material: {
+  id: string
+  title: string
+  description: string | null
+  summary: string | null
+  youtubeUrl: string | null
+  asatidz: { nama: string | null; fotoUrl: string | null } | null
+}) {
+  return {
+    id: material.id,
+    title: material.title,
+    description: material.description ?? material.summary,
+    youtube_url: material.youtubeUrl,
+    stream_url: null,
+    asatidz: material.asatidz
+      ? { nama: material.asatidz.nama, foto_url: material.asatidz.fotoUrl }
+      : null,
   }
+}
 
-  if (!item) {
-    // Kalau tidak ditemukan, gunakan dummy data agar halaman tetap render
-    item = {
-      id, title: 'Hukumnya Tahlilan Bersama Ust. Adi Hidayat',
-      description: 'Tahlilan merupakan salah satu tradisi keagamaan yang sudah lama hidup dan berkembang di tengah masyarakat Muslim Indonesia.',
-      youtube_url: null,
-      stream_url: null,
-      asatidz: { nama: 'Ust. Adi Hidayat' },
-      status: 'upcoming',
-    }
-    relatedItems = Array(6).fill({
-      id: 'dummy', title: 'Hukumnya Tahlilan', description: 'Membahas Seputar Tahlilan, dan pertan...', asatidz: { nama: 'Ust. Adi Hidayat' }
-    })
-  }
+export default async function TematikDetailPage({ params }: Props) {
+  const { id } = await params
+  const [material, related] = await Promise.all([
+    db.material.findFirst({
+      where: { id, type: 'kajian_tematik', isPublished: true },
+      include: { asatidz: { select: { nama: true, fotoUrl: true } } },
+    }),
+    db.material.findMany({
+      where: { type: 'kajian_tematik', isPublished: true, id: { not: id } },
+      include: { asatidz: { select: { nama: true, fotoUrl: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    }),
+  ])
+
+  if (!material) notFound()
 
   return (
     <KelasDetailClient
-      item={item}
-      type={type as 'live' | 'tematik'}
-      relatedItems={relatedItems}
+      item={mapMaterial(material)}
+      type="tematik"
+      relatedItems={related.map(mapMaterial)}
     />
   )
 }

@@ -1,113 +1,78 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { AsatidzService } from '@/services/asatidz';
-import { CheckCircle, Link as LinkIcon, Video, ArrowLeft, Loader2 } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, ExternalLink, Link as LinkIcon, LoaderCircle, Plus, Video } from 'lucide-react'
+
+interface PrivateClassItem {
+  id: string
+  title: string
+  zoomLink: string
+  passcode: string
+  isActive: boolean
+  createdAt: string
+}
 
 export default function CreatePrivateClass() {
-  const [step, setStep] = useState<'form' | 'success'>('form');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    zoom_link: '',
-    passcode: Math.floor(100000 + Math.random() * 900000).toString() // Auto generate kode
-  });
+  const [classes, setClasses] = useState<PrivateClassItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [created, setCreated] = useState<PrivateClassItem | null>(null)
+  const [form, setForm] = useState({ title: '', zoomLink: '', passcode: '' })
 
-  const handleCreate = async () => {
-    setLoading(true);
-    try {
-      // Logic simpan ke database
-      // await AsatidzService.createPrivateClass(formData);
-      setResult(formData);
-      setStep('success');
-    } catch (err) {
-      alert("Gagal membuat kelas");
-    } finally {
-      setLoading(false);
+  const generatedPasscode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [])
+
+  useEffect(() => {
+    setForm((current) => ({ ...current, passcode: generatedPasscode }))
+    const load = async () => {
+      const response = await fetch('/api/asatidz/private-classes', { headers: { Accept: 'application/json' } })
+      const payload = (await response.json().catch(() => null)) as { classes?: PrivateClassItem[]; error?: string } | null
+      if (!response.ok) setError(payload?.error ?? 'Gagal memuat kelas private')
+      else setClasses(payload?.classes ?? [])
+      setLoading(false)
     }
-  };
+    void load()
+  }, [generatedPasscode])
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    const response = await fetch('/api/asatidz/private-classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(form),
+    })
+    const payload = (await response.json().catch(() => null)) as { class?: PrivateClassItem; error?: string } | null
+    if (!response.ok || !payload?.class) {
+      setError(payload?.error ?? 'Gagal membuat kelas private')
+    } else {
+      setCreated(payload.class)
+      setClasses((items) => [payload.class!, ...items])
+      setForm({ title: '', zoomLink: '', passcode: Math.floor(100000 + Math.random() * 900000).toString() })
+    }
+    setSaving(false)
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-emerald-950 tracking-tighter">Buat Kelas Private</h2>
-        <button className="text-xs font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-2 rounded-full">Lihat Riwayat</button>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <section className="rounded-3xl bg-[#064E3B] p-6 text-white shadow-xl sm:p-8"><p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Ruang Asatidz</p><h1 className="mt-2 text-3xl font-black">Kelas Private</h1><p className="mt-2 text-sm text-white/65">Buat ruang Zoom dan simpan riwayat kelas ke database.</p></section>
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {created && <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 text-emerald-600" /><div><p className="font-black text-emerald-900">Kelas berhasil dibuat</p><p className="mt-1 text-sm text-emerald-700">{created.title} · Kode {created.passcode}</p><a href={created.zoomLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-emerald-800 hover:underline"><ExternalLink size={15} /> Buka Zoom</a></div></div></section>}
 
-      {step === 'form' ? (
-        <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm space-y-8">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Materi Kajian</label>
-            <input 
-              type="text" 
-              placeholder="Contoh: Akhlakul Lil Banin" 
-              className="w-full p-5 bg-gray-50 rounded-2xl border-none font-bold text-emerald-950 focus:ring-2 focus:ring-emerald-500 transition-all"
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-            />
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex items-center gap-3"><Video className="text-emerald-700" /><h2 className="text-xl font-black text-slate-900">Buat Kelas Baru</h2></div>
+        <form onSubmit={submit} className="mt-6 space-y-5">
+          <label className="block"><span className="text-sm font-bold text-slate-700">Materi kajian</span><input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Contoh: Akhlakul Lil Banin" className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" /></label>
+          <div className="grid gap-5 sm:grid-cols-[1fr_180px]">
+            <label><span className="text-sm font-bold text-slate-700">Link Zoom</span><input required type="url" value={form.zoomLink} onChange={(event) => setForm({ ...form, zoomLink: event.target.value })} placeholder="https://zoom.us/j/..." className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" /></label>
+            <label><span className="text-sm font-bold text-slate-700">Kode</span><input required value={form.passcode} onChange={(event) => setForm({ ...form, passcode: event.target.value })} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 font-mono" /></label>
           </div>
+          <button type="submit" disabled={saving} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1D794E] font-bold text-white disabled:opacity-60">{saving ? <LoaderCircle className="animate-spin" size={18} /> : <Plus size={18} />}{saving ? 'Menyimpan...' : 'Buat Kelas'}</button>
+        </form>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Link Zoom</label>
-              <input 
-                type="text" 
-                placeholder="HTTPS://Zoom.us/j/..." 
-                className="w-full p-5 bg-gray-50 rounded-2xl border-none font-bold text-emerald-950 focus:ring-2 focus:ring-emerald-500 transition-all"
-                onChange={(e) => setFormData({...formData, zoom_link: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Kode</label>
-              <input 
-                type="text" 
-                value={formData.passcode}
-                readOnly
-                className="w-full p-5 bg-gray-50 rounded-2xl border-none font-bold text-gray-400"
-              />
-            </div>
-          </div>
-
-          <button 
-            onClick={handleCreate}
-            disabled={loading || !formData.title}
-            className="w-full py-5 bg-[#1D794E] text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl hover:bg-emerald-800 transition-all flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : 'Buat Sekarang'}
-          </button>
-        </div>
-      ) : (
-        /* SUCCESS VIEW - Gambar 9 */
-        <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm space-y-8">
-          <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-[24px] flex items-center gap-4 text-emerald-700">
-             <CheckCircle className="text-emerald-500" />
-             <div>
-                <p className="font-black text-sm uppercase tracking-tight">Anda Telah Membuat Kelas</p>
-                <p className="text-xs font-medium opacity-80">Tetap berada di Zoom untuk mengisi kajian anda</p>
-             </div>
-          </div>
-
-          <div className="space-y-6 px-4">
-             <div className="flex border-b border-gray-50 py-4">
-                <span className="w-24 text-sm font-black text-emerald-950">Materi</span>
-                <span className="text-sm font-bold text-gray-400">: {result.title}</span>
-             </div>
-             <div className="flex border-b border-gray-50 py-4">
-                <span className="w-24 text-sm font-black text-emerald-950">Link</span>
-                <span className="text-sm font-bold text-blue-500">: {result.zoom_link}</span>
-             </div>
-             <div className="flex py-4">
-                <span className="w-24 text-sm font-black text-emerald-950">Kode</span>
-                <span className="text-sm font-bold text-gray-400">: {result.passcode}</span>
-             </div>
-          </div>
-
-          <button onClick={() => setStep('form')} className="w-full py-4 bg-gray-50 text-emerald-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-100 transition-all">
-             <ArrowLeft size={14} /> Buat Kelas Lainnya
-          </button>
-        </div>
-      )}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex items-center gap-3"><LinkIcon className="text-emerald-700" /><h2 className="text-xl font-black text-slate-900">Riwayat Kelas</h2></div>{loading ? <div className="grid h-44 place-items-center"><LoaderCircle className="animate-spin text-emerald-700" /></div> : classes.length === 0 ? <p className="py-12 text-center text-sm text-slate-500">Belum ada kelas private.</p> : <div className="mt-5 space-y-3">{classes.map((item) => <article key={item.id} className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 p-5 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{item.isActive ? 'Aktif' : 'Nonaktif'}</span></div><h3 className="mt-2 font-black text-slate-900">{item.title}</h3><p className="mt-1 text-xs text-slate-500">Kode {item.passcode} · {new Date(item.createdAt).toLocaleString('id-ID')}</p></div><a href={item.zoomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-emerald-700"><ExternalLink size={16} /> Zoom</a></article>)}</div>}</section>
     </div>
-  );
+  )
 }
