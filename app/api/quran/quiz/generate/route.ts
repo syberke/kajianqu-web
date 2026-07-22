@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getChapterVerses, getQuranChapters } from '@/lib/quran-api'
 import { createClient } from '@/lib/supabase/server'
 import type { QuranVerse } from '@/types/quran'
+import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 
 interface QuizRequest {
   surahId?: number
@@ -116,6 +117,9 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rate = checkRateLimit(`quran-quiz:${requestIdentity(request, user.id)}`, 30, 60 * 60 * 1_000)
+  if (!rate.allowed) return NextResponse.json({ error: 'Batas pembuatan quiz sementara tercapai.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } })
 
   const payload = (await request.json().catch(() => null)) as QuizRequest | null
   const surahId = Number(payload?.surahId)

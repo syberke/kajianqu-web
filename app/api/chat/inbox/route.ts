@@ -22,6 +22,7 @@ export async function GET() {
   const seen = new Set<string>()
   const conversations = messages.flatMap((message) => {
     const counterpart = message.senderId === user.id ? message.receiver : message.sender
+    if (!counterpart) return []
     if (seen.has(counterpart.id)) return []
     seen.add(counterpart.id)
     return [{
@@ -34,7 +35,7 @@ export async function GET() {
       lastMessage: {
         id: message.id,
         content: message.content,
-        createdAt: message.createdAt.toISOString(),
+        createdAt: message.createdAt?.toISOString() ?? null,
         mine: message.senderId === user.id,
       },
     }]

@@ -24,18 +24,13 @@ export default function RegisterAsatidzPage() {
     setLoading(true)
     setMessage('')
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/register-asatidz`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-          body: JSON.stringify(form),
-        }
-      )
-      const text = await res.text()
-      let result: any = {}
-      try { result = JSON.parse(text) } catch { result = { error: text } }
-      if (!res.ok) { setMessage(result.error || 'Gagal mendaftar'); return }
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, role: 'asatidz' }),
+      })
+      const result = (await res.json().catch(() => null)) as { error?: string } | null
+      if (!res.ok) { setMessage(result?.error || 'Gagal mendaftar'); return }
       setIsSuccess(true)
     } catch {
       setMessage('Tidak bisa terhubung ke server')

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronLeft, ChevronRight, LogOut, User, LayoutDashboard, X, Play } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -53,6 +54,7 @@ const NOMINALS = [
 const PAYMENT_METHODS = ['Transfer Bank (BCA)', 'Transfer Bank (BNI)', 'Transfer Bank (BRI)', 'Transfer Bank (Mandiri)', 'BSI Mobile', 'GoPay', 'OVO', 'Dana', 'ShopeePay']
 
 export default function WelcomeClient({ userProfile }: Props) {
+  const router = useRouter()
   const isLoggedIn = !!userProfile
   const firstName = userProfile?.nama?.split(' ')[0] || 'Sahabat'
   const initial = userProfile?.nama?.charAt(0).toUpperCase() || 'U'
@@ -103,9 +105,7 @@ export default function WelcomeClient({ userProfile }: Props) {
     const final = isOther ? parseInt(customNominal.replace(/\D/g, '')) : selectedNominal
     if (!final || !paymentMethod) return
     setDonateLoad(true)
-    await new Promise(r => setTimeout(r, 1500))
-    setDonateOk(true)
-    setDonateLoad(false)
+    router.push(`/dashboard/siswa/donation?category=dakwah&nominal=${final}`)
   }
 
   const resetPopup = () => {
@@ -268,7 +268,7 @@ export default function WelcomeClient({ userProfile }: Props) {
       </section>
 
       {/* ════ SEKAPUR SIRIH ════ */}
-      <section className="py-16 md:py-20 px-6 max-w-[1378px] mx-auto relative">
+      <section id="tentang" className="py-16 md:py-20 px-6 max-w-[1378px] mx-auto relative scroll-mt-24">
         <h2 className="text-[#157a52] text-[28px] md:text-[36px] font-bold text-center mb-10 md:mb-14">Sekapur Sirih</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {[
@@ -489,10 +489,10 @@ export default function WelcomeClient({ userProfile }: Props) {
               KajianQu adalah platform islami terpadu untuk membaca Al-Qur&apos;an, doa, dan belajar Islam dengan mudah dan nyaman.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
+              <a href="https://wa.me/6282262170018" target="_blank" rel="noreferrer" aria-label="WhatsApp KajianQu" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
                 <img src={imgWA} alt="WhatsApp" className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
+              <a href="https://www.instagram.com/kajian_qu/" target="_blank" rel="noreferrer" aria-label="Instagram KajianQu" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-colors border group">
                 <img src={imgIG} alt="Instagram" className="w-5 h-5 group-hover:brightness-0 group-hover:invert" />
               </a>
             </div>
@@ -500,24 +500,24 @@ export default function WelcomeClient({ userProfile }: Props) {
           <div className="lg:col-span-2 space-y-6">
             <h4 className="font-bold text-[#0c1421] uppercase tracking-wider text-sm">Perusahaan</h4>
             <ul className="space-y-4 text-sm text-gray-500">
-              <li><Link href="#" className="hover:text-[#157a52]">Tentang Kami</Link></li>
-              <li><Link href="#" className="hover:text-[#157a52]">Visi & Misi</Link></li>
-              <li><Link href="#" className="hover:text-[#157a52]">Tim Asatidz</Link></li>
-              <li><Link href="#" className="hover:text-[#157a52]">Kontak Kami</Link></li>
+              <li><Link href="/welcome#tentang" className="hover:text-[#157a52]">Tentang Kami</Link></li>
+              <li><Link href="/welcome#tentang" className="hover:text-[#157a52]">Visi &amp; Misi</Link></li>
+              <li><Link href="/kelas" className="hover:text-[#157a52]">Tim Asatidz</Link></li>
+              <li><Link href="/bantuan" className="hover:text-[#157a52]">Kontak Kami</Link></li>
             </ul>
           </div>
           <div className="lg:col-span-3 space-y-6">
             <h4 className="font-bold text-[#0c1421] uppercase tracking-wider text-sm">Program Kelas</h4>
             <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
               <ul className="space-y-4">
-                <li><Link href="#" className="hover:text-[#157a52]">Fiqih</Link></li>
-                <li><Link href="#" className="hover:text-[#157a52]">Akhlak</Link></li>
-                <li><Link href="#" className="hover:text-[#157a52]">Tahfidz</Link></li>
+                <li><Link href="/keilmuan?topik=Fiqih" className="hover:text-[#157a52]">Fiqih</Link></li>
+                <li><Link href="/keilmuan?topik=Akhlak" className="hover:text-[#157a52]">Akhlak</Link></li>
+                <li><Link href="/quran-ai?mode=murojaah" className="hover:text-[#157a52]">Tahfidz</Link></li>
               </ul>
               <ul className="space-y-4">
-                <li><Link href="#" className="hover:text-[#157a52]">Akidah</Link></li>
-                <li><Link href="#" className="hover:text-[#157a52]">Tafsir</Link></li>
-                <li><Link href="#" className="hover:text-[#157a52]">Tajwid</Link></li>
+                <li><Link href="/keilmuan?topik=Akidah" className="hover:text-[#157a52]">Akidah</Link></li>
+                <li><Link href="/keilmuan?topik=Tafsir" className="hover:text-[#157a52]">Tafsir</Link></li>
+                <li><Link href="/quran-ai?mode=belajar" className="hover:text-[#157a52]">Tajwid</Link></li>
               </ul>
             </div>
           </div>
@@ -533,8 +533,8 @@ export default function WelcomeClient({ userProfile }: Props) {
         <div className="max-w-[1378px] mx-auto pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-gray-400">
           <p>© {new Date().getFullYear()} KajianQu. Hak Cipta Dilindungi.</p>
           <div className="flex gap-8">
-            <Link href="#" className="hover:text-[#157a52]">Syarat & Ketentuan</Link>
-            <Link href="#" className="hover:text-[#157a52]">Kebijakan Privasi</Link>
+            <Link href="/syarat-ketentuan" className="hover:text-[#157a52]">Syarat &amp; Ketentuan</Link>
+            <Link href="/kebijakan-privasi" className="hover:text-[#157a52]">Kebijakan Privasi</Link>
           </div>
         </div>
       </footer>
@@ -618,14 +618,14 @@ export default function WelcomeClient({ userProfile }: Props) {
                   <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4">
                     <p className="text-[#0c1421] font-bold text-sm border-b pb-3">Ringkasan Program Kami</p>
                     <div className="flex gap-4 items-center bg-white p-3 rounded-xl shadow-sm border">
-                      <img src={imgEAbsensi} className="w-16 h-16 rounded-lg object-cover" />
+                      <img src={imgEAbsensi} alt="Program E-Absensi Pesantren" className="w-16 h-16 rounded-lg object-cover" />
                       <div>
                         <h4 className="font-bold text-xs">E-Absensi Pesantren</h4>
                         <p className="text-gray-500 text-[10px] mt-1 italic">Digitalisasi kehadiran santri secara real-time.</p>
                       </div>
                     </div>
                     <div className="flex gap-4 items-center bg-white p-3 rounded-xl shadow-sm border">
-                      <img src={imgCBT} className="w-16 h-16 rounded-lg object-cover" />
+                      <img src={imgCBT} alt="Program CBT Ujian Online" className="w-16 h-16 rounded-lg object-cover" />
                       <div>
                         <h4 className="font-bold text-xs">CBT Ujian Online</h4>
                         <p className="text-gray-500 text-[10px] mt-1 italic">Sistem ujian berbasis komputer santri.</p>

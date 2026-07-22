@@ -15,7 +15,7 @@ export default async function AsatidzDashboardPage() {
   const [materials, enrollments, incomingMessages, liveToday, upcomingLive, recentMessages] = await Promise.all([
     db.material.count({ where: { asatidzId: user.id } }),
     db.privateClassEnrollment.findMany({
-      where: { material: { asatidzId: user.id } },
+      where: { class: { asatidzId: user.id } },
       select: { studentId: true },
     }),
     db.message.count({ where: { receiverId: user.id } }),
@@ -100,11 +100,11 @@ export default async function AsatidzDashboardPage() {
           ) : (
             <div className="flex-1 space-y-5">
               {recentMessages.map((message) => {
-                const name = message.sender.nama || 'Santri KajianQu'
+                const name = message.sender?.nama || 'Santri KajianQu'
                 return (
                   <div key={message.id} className="flex items-center gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#064E3B] text-sm font-black text-white">{name[0]}</div>
-                    <div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><h3 className="truncate text-sm font-black text-emerald-950">{name}</h3><span className="shrink-0 text-[10px] font-bold text-gray-300">{message.createdAt.toLocaleDateString('id-ID')}</span></div><p className="mt-1 truncate text-xs font-medium text-gray-400">{message.content}</p></div>
+                    <div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><h3 className="truncate text-sm font-black text-emerald-950">{name}</h3><span className="shrink-0 text-[10px] font-bold text-gray-300">{message.createdAt?.toLocaleDateString('id-ID') ?? '-'}</span></div><p className="mt-1 truncate text-xs font-medium text-gray-400">{message.content}</p></div>
                   </div>
                 )
               })}

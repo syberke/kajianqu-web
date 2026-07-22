@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 
 const imgLoginArt = "https://images.unsplash.com/photo-1585036156171-384164a8c675?auto=format&fit=crop&q=80&w=1200"
 const imgLogo     = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
@@ -22,18 +23,13 @@ export default function RegisterSiswaPage() {
     setLoading(true)
     setMessage('')
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/register-siswa`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-          body: JSON.stringify(form),
-        }
-      )
-      const text = await res.text()
-      let result: any = {}
-      try { result = JSON.parse(text) } catch { result = { error: text } }
-      if (!res.ok) { setMessage(result.error || 'Gagal mendaftar'); return }
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, role: 'siswa' }),
+      })
+      const result = (await res.json().catch(() => null)) as { error?: string } | null
+      if (!res.ok) { setMessage(result?.error || 'Gagal mendaftar'); return }
       setIsSuccess(true)
     } catch {
       setMessage('Tidak bisa terhubung ke server')
@@ -101,7 +97,7 @@ export default function RegisterSiswaPage() {
             <div className="flex-1 h-px bg-[#d4d7e3]" />
           </div>
 
-          <button className="w-full flex items-center justify-center gap-4 bg-[#effffe] border border-[#d4d7e3] rounded-xl py-3 hover:bg-[#e0faf9] transition-colors">
+          <button onClick={() => void supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })} className="w-full flex items-center justify-center gap-4 bg-[#effffe] border border-[#d4d7e3] rounded-xl py-3 hover:bg-[#e0faf9] transition-colors">
             <img src={imgGoogle} alt="Google" className="w-7 h-7 object-contain" />
             <span className="text-[#313957] text-base">Sign up with Google</span>
           </button>

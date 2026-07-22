@@ -13,7 +13,15 @@ export async function getCurrentUserProfile() {
 
   const profile = await db.profile.findUnique({
     where: { id: user.id },
-    select: { id: true, nama: true, email: true, fotoUrl: true, role: true },
+    select: {
+      id: true,
+      nama: true,
+      email: true,
+      fotoUrl: true,
+      role: true,
+      isActive: true,
+      asatidzProfile: { select: { approved: true } },
+    },
   })
 
   return {
@@ -25,6 +33,8 @@ export async function getCurrentUserProfile() {
           email: profile.email,
           foto_url: profile.fotoUrl,
           role: profile.role,
+          isActive: profile.isActive,
+          asatidzApproved: profile.asatidzProfile?.approved ?? false,
         }
       : null,
   }
@@ -39,7 +49,14 @@ export async function requireAuth() {
 export async function requireRole(role: 'siswa' | 'asatidz' | 'admin') {
   const result = await requireAuth()
 
-  if (result.profile?.role === role) return result
+  const permitted = result.profile?.isActive
+    && result.profile.role === role
+    && (role !== 'asatidz' || result.profile.asatidzApproved)
+  if (permitted) return result
+
+  if (!result.profile?.isActive || (result.profile.role === 'asatidz' && !result.profile.asatidzApproved)) {
+    redirect('/welcome?access=pending')
+  }
 
   const roleRedirects: Record<string, string> = {
     admin: '/dashboard/admin',

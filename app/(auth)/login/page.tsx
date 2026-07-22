@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { safeInternalPath } from '@/lib/navigation/safe-redirect'
 
 const imgLoginArt = "https://images.unsplash.com/photo-1585036156171-384164a8c675?auto=format&fit=crop&q=80&w=1200"
 const imgLogo     = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
@@ -47,8 +48,8 @@ export default function LoginPage() {
         ? '/dashboard/asatidz'
         : '/welcome'
     const requestedDestination = new URLSearchParams(window.location.search).get('next')
-    const destination = requestedDestination?.startsWith('/') && !requestedDestination.startsWith('//')
-      ? requestedDestination
+    const destination = requestedDestination
+      ? safeInternalPath(requestedDestination, roleDestination)
       : roleDestination
 
     router.replace(destination)
@@ -57,9 +58,7 @@ export default function LoginPage() {
 
   const onGoogle = async () => {
     const requestedDestination = new URLSearchParams(window.location.search).get('next')
-    const safeDestination = requestedDestination?.startsWith('/') && !requestedDestination.startsWith('//')
-      ? requestedDestination
-      : null
+    const safeDestination = requestedDestination ? safeInternalPath(requestedDestination) : null
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     if (safeDestination) callbackUrl.searchParams.set('next', safeDestination)
 

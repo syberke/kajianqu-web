@@ -80,9 +80,16 @@ DIRECT_URL=
 
 GEMINI_API_KEY=
 
-# Optional
+# Optional / defaults
 QURAN_API_BASE_URL=https://api.quran.com/api/v4
+QURAN_FALLBACK_API_BASE_URL=https://api.alquran.cloud/v1
 QURAN_RECITATION_ID=1
+GEMINI_ANALYSIS_MODEL=gemini-2.5-flash
+
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_WHATSAPP_NUMBER=6282262170018
+NEXT_PUBLIC_WHATSAPP_URL=https://wa.me/6282262170018
+NEXT_PUBLIC_INSTAGRAM_URL=https://www.instagram.com/kajian_qu/
 ```
 
 `GEMINI_API_KEY` harus tetap server-side. Browser menerima ephemeral token berumur pendek untuk Gemini Live, bukan long-lived API key.
@@ -97,30 +104,43 @@ npm run db:generate
 npm run dev
 ```
 
-## Prisma dan database
+## Database, Prisma, dan migration
 
-Supabase masih dipakai sebagai penyedia autentikasi dan Storage untuk file yang memang membutuhkan object storage. Query database pada modul yang dimigrasikan berjalan melalui Prisma di server.
+Supabase dipakai untuk PostgreSQL, Auth, dan Storage. Prisma adalah ORM server-side. Sumber kebenaran perubahan schema berada di `supabase/migrations`, bukan di `prisma/migrations`.
 
-Untuk database KajianQu yang sudah berjalan, set `DATABASE_URL` dan `DIRECT_URL` ke PostgreSQL saat ini. Sebelum deployment production pertama, bandingkan schema live dengan schema Prisma karena repository lama tidak menyimpan schema database lengkap:
+Untuk Supabase, gunakan pooler URL untuk runtime dan direct connection untuk operasi schema:
 
-```bash
-npm run db:pull
+```env
+DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require
+DIRECT_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:5432/postgres?sslmode=require
 ```
 
-Tinjau perbedaannya terlebih dahulu. Setelah schema dan migration sesuai dengan database production, generate client dan deploy migration:
+Jangan commit password database atau `SUPABASE_SERVICE_ROLE_KEY`.
+
+Project live KajianQu sudah menerima migration berikut:
+
+- `20260722135753_harden_kajianqu_schema_rls_storage.sql`
+- `20260722140007_resolve_database_advisors.sql`
+
+Untuk membuat perubahan schema berikutnya:
+
+```bash
+npx supabase login
+npx supabase link --project-ref zqubndojitbslbbblllo
+npm run db:migration:new nama_perubahan
+# edit file SQL baru di supabase/migrations
+npm run db:lint
+npm run db:push
+```
+
+Setelah schema berubah, selaraskan `prisma/schema.prisma`, lalu:
 
 ```bash
 npm run db:generate
-npm run db:deploy
+npm run typecheck
 ```
 
-Untuk perubahan schema saat development:
-
-```bash
-npm run db:migrate
-```
-
-Abstraksi Prisma membuat perpindahan antar penyedia PostgreSQL seperti Supabase Postgres, Neon, atau PostgreSQL terkelola lain lebih terisolasi. Perpindahan ke engine SQL yang berbeda tetap memerlukan peninjauan provider, native type, dan migration history.
+Migration live memasang RLS, policy per peran, grant Data API, trigger profil, indeks, dan bucket Storage. Bucket `donation-proofs` dan `asatidz-documents` bersifat privat.
 
 ## Scripts
 
@@ -128,8 +148,13 @@ Abstraksi Prisma membuat perpindahan antar penyedia PostgreSQL seperti Supabase 
 npm run dev
 npm run build
 npm run lint
+npm run typecheck
+npm test
+npm run verify
 npm run db:generate
 npm run db:pull
-npm run db:migrate
-npm run db:deploy
+npm run db:validate
+npm run db:migration:new nama_perubahan
+npm run db:lint
+npm run db:push
 ```

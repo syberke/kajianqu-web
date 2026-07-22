@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server'
 
 import { GEMINI_LIVE_MODEL, GEMINI_LIVE_SYSTEM_INSTRUCTION } from '@/lib/gemini-live-config'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -16,6 +17,9 @@ export async function POST() {
       { status: 401 },
     )
   }
+
+  const rate = checkRateLimit(`gemini-live:${requestIdentity(request, user.id)}`, 30, 60 * 60 * 1_000)
+  if (!rate.allowed) return NextResponse.json({ error: 'Batas sesi live sementara tercapai.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } })
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {

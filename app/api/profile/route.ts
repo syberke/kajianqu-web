@@ -29,8 +29,8 @@ export async function GET() {
       email: profile.email,
       fotoUrl: profile.fotoUrl,
       noWa: profile.noWa,
-      bank: profile.bank,
-      noRekening: profile.noRekening,
+      bank: profile.asatidzProfile?.bank ?? null,
+      noRekening: profile.asatidzProfile?.noRekening ?? null,
       role: profile.role,
       bidang: profile.asatidzProfile?.bidang ?? null,
     },
@@ -62,16 +62,23 @@ export async function PATCH(request: Request) {
       data: {
         ...(nama !== undefined ? { nama } : {}),
         ...(payload.noWa !== undefined ? { noWa: clean(payload.noWa) || null } : {}),
-        ...(payload.bank !== undefined ? { bank: clean(payload.bank) || null } : {}),
-        ...(payload.noRekening !== undefined ? { noRekening: clean(payload.noRekening) || null } : {}),
       },
     })
 
-    if ((current.role === 'asatidz' || current.role === 'admin') && payload.bidang !== undefined) {
+    if (current.role === 'asatidz' || current.role === 'admin') {
       await tx.asatidzProfile.upsert({
         where: { id: user.id },
-        create: { id: user.id, bidang: clean(payload.bidang) || null },
-        update: { bidang: clean(payload.bidang) || null },
+        create: {
+          id: user.id,
+          bidang: clean(payload.bidang) || null,
+          bank: clean(payload.bank) || null,
+          noRekening: clean(payload.noRekening) || null,
+        },
+        update: {
+          ...(payload.bidang !== undefined ? { bidang: clean(payload.bidang) || null } : {}),
+          ...(payload.bank !== undefined ? { bank: clean(payload.bank) || null } : {}),
+          ...(payload.noRekening !== undefined ? { noRekening: clean(payload.noRekening) || null } : {}),
+        },
       })
     }
 
@@ -89,8 +96,8 @@ export async function PATCH(request: Request) {
           email: profile.email,
           fotoUrl: profile.fotoUrl,
           noWa: profile.noWa,
-          bank: profile.bank,
-          noRekening: profile.noRekening,
+          bank: profile.asatidzProfile?.bank ?? null,
+          noRekening: profile.asatidzProfile?.noRekening ?? null,
           role: profile.role,
           bidang: profile.asatidzProfile?.bidang ?? null,
         }

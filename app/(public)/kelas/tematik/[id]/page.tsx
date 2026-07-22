@@ -31,11 +31,11 @@ export default async function TematikDetailPage({ params }: Props) {
   const { id } = await params
   const [material, related] = await Promise.all([
     db.material.findFirst({
-      where: { id, type: 'kajian_tematik', isPublished: true },
+      where: { id, type: 'kajian_tematik', isPublished: true, reviewStatus: 'approved' },
       include: { asatidz: { select: { nama: true, fotoUrl: true } } },
     }),
     db.material.findMany({
-      where: { type: 'kajian_tematik', isPublished: true, id: { not: id } },
+      where: { type: 'kajian_tematik', isPublished: true, reviewStatus: 'approved', id: { not: id } },
       include: { asatidz: { select: { nama: true, fotoUrl: true } } },
       orderBy: { createdAt: 'desc' },
       take: 6,

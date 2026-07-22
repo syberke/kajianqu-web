@@ -12,11 +12,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     where: { id },
     include: {
       asatidzProfile: true,
-      materials: {
+      privateClassPages: {
         select: {
           id: true,
           title: true,
-          type: true,
           enrollments: {
             include: { student: { select: { id: true, nama: true } } },
           },
@@ -28,16 +27,16 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!profile || profile.role !== 'asatidz') notFound()
 
   const studentIds = new Set<string>()
-  const enrollments = profile.materials.flatMap((material) =>
-    material.enrollments.map((enrollment) => {
+  const enrollments = profile.privateClassPages.flatMap((classPage) =>
+    classPage.enrollments.map((enrollment) => {
       studentIds.add(enrollment.studentId)
       return {
         id: enrollment.id,
-        className: material.title,
-        level: material.type === 'keilmuan' ? 'Kelas Keilmuan' : 'Kajian Tematik',
-        studentName: enrollment.student.nama || 'Santri KajianQu',
-        createdAt: enrollment.createdAt.toISOString(),
-        status: enrollment.status || 'pending',
+        className: classPage.title,
+        level: 'Kelas Private',
+        studentName: enrollment.student.nama,
+        createdAt: enrollment.createdAt?.toISOString() ?? '',
+        status: enrollment.status,
       }
     }),
   )
@@ -65,7 +64,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             }
           : null,
         stats: {
-          totalClasses: profile.materials.length,
+          totalClasses: profile.privateClassPages.length,
           totalStudents: studentIds.size,
           rating: null,
         },
