@@ -19,7 +19,7 @@ export async function GET() {
         id: item.id,
         type: item.type,
         title: item.title,
-        description: item.description,
+        description: item.message,
         is_read: item.isRead,
         created_at: item.createdAt.toISOString(),
       })),

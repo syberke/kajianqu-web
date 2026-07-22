@@ -15,8 +15,8 @@ export async function requireAdmin() {
 
   const profile = await db.profile.findUnique({
     where: { id: user.id },
-    select: { role: true },
+    select: { role: true, isActive: true },
   })
 
-  return profile?.role === 'admin' ? user : null
+  return profile?.role === 'admin' && profile.isActive ? user : null
 }

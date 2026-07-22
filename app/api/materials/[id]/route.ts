@@ -9,7 +9,7 @@ interface RouteContext {
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params
   const material = await db.material.findFirst({
-    where: { id, isPublished: true },
+    where: { id, isPublished: true, reviewStatus: 'approved' },
     include: {
       keilmuan: { select: { id: true, nama: true } },
       asatidz: { select: { nama: true, fotoUrl: true } },

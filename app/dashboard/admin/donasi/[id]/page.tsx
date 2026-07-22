@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import DetailDonasiClient from './DetailDonasiClient'
 import { db } from '@/lib/db'
 import { requireRole } from '@/lib/helpers/auth'
+import { getDonationProofAccessUrl } from '@/lib/storage/donation-proof-server'
 
 export default async function DetailDonasiPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -14,6 +15,7 @@ export default async function DetailDonasiPage({ params }: { params: Promise<{ i
   })
 
   if (!donation) notFound()
+  const proofAccessUrl = await getDonationProofAccessUrl(donation.paymentProofUrl)
 
   return (
     <DetailDonasiClient
@@ -24,7 +26,7 @@ export default async function DetailDonasiPage({ params }: { params: Promise<{ i
         nominal: donation.nominal.toNumber(),
         note: donation.note,
         payment_status: donation.paymentStatus,
-        payment_proof_url: donation.paymentProofUrl,
+        payment_proof_url: proofAccessUrl,
         created_at: donation.createdAt.toISOString(),
         updated_at: donation.updatedAt.toISOString(),
         donation_methods: donation.method

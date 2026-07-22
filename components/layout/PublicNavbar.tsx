@@ -22,7 +22,7 @@ interface Props {
 function getDashboardHref(role?: string) {
   if (role === 'admin') return '/dashboard/admin'
   if (role === 'asatidz') return '/dashboard/asatidz'
-  return '/welcome'
+  return '/dashboard/siswa'
 }
 
 function getProfileHref(role?: string) {

@@ -3,6 +3,7 @@ import 'server-only'
 import type { QuranChapter, QuranVerse, QuranWord } from '@/types/quran'
 
 const QURAN_API_BASE_URL = process.env.QURAN_API_BASE_URL ?? 'https://api.quran.com/api/v4'
+const QURAN_FALLBACK_API_BASE_URL = process.env.QURAN_FALLBACK_API_BASE_URL ?? 'https://api.alquran.cloud/v1'
 const QURAN_AUDIO_BASE_URL = 'https://verses.quran.com'
 const DEFAULT_RECITATION_ID = process.env.QURAN_RECITATION_ID ?? '1'
 const PAGE_SIZE = 50
@@ -54,13 +55,24 @@ interface ApiVerseResponse {
 async function quranFetch<T>(path: string): Promise<T> {
   const response = await fetch(`${QURAN_API_BASE_URL}${path}`, {
     headers: { Accept: 'application/json' },
-    cache: 'force-cache',
+    next: { revalidate: 60 * 60 * 24 * 7 },
+    signal: AbortSignal.timeout(12_000),
   })
 
   if (!response.ok) {
     throw new Error(`Quran API gagal (${response.status}) untuk ${path}`)
   }
 
+  return response.json() as Promise<T>
+}
+
+async function fallbackFetch<T>(path: string): Promise<T> {
+  const response = await fetch(`${QURAN_FALLBACK_API_BASE_URL}${path}`, {
+    headers: { Accept: 'application/json' },
+    next: { revalidate: 60 * 60 * 24 * 7 },
+    signal: AbortSignal.timeout(12_000),
+  })
+  if (!response.ok) throw new Error(`Quran fallback API gagal (${response.status})`)
   return response.json() as Promise<T>
 }
 
@@ -72,16 +84,34 @@ function normalizeAudioUrl(url?: string): string | undefined {
 }
 
 export async function getQuranChapters(): Promise<QuranChapter[]> {
-  const payload = await quranFetch<{ chapters: ApiChapter[] }>('/chapters?language=id')
-
-  return payload.chapters.map((chapter) => ({
-    id: chapter.id,
-    nameSimple: chapter.name_simple,
-    nameArabic: chapter.name_arabic,
-    translatedName: chapter.translated_name?.name ?? chapter.name_simple,
-    versesCount: chapter.verses_count,
-    revelationPlace: chapter.revelation_place,
-  }))
+  try {
+    const payload = await quranFetch<{ chapters: ApiChapter[] }>('/chapters?language=id')
+    return payload.chapters.map((chapter) => ({
+      id: chapter.id,
+      nameSimple: chapter.name_simple,
+      nameArabic: chapter.name_arabic,
+      translatedName: chapter.translated_name?.name ?? chapter.name_simple,
+      versesCount: chapter.verses_count,
+      revelationPlace: chapter.revelation_place,
+    }))
+  } catch {
+    const payload = await fallbackFetch<{ data: Array<{
+      number: number
+      englishName: string
+      name: string
+      englishNameTranslation: string
+      numberOfAyahs: number
+      revelationType: string
+    }> }>('/surah')
+    return payload.data.map((chapter) => ({
+      id: chapter.number,
+      nameSimple: chapter.englishName,
+      nameArabic: chapter.name,
+      translatedName: chapter.englishNameTranslation,
+      versesCount: chapter.numberOfAyahs,
+      revelationPlace: chapter.revelationType.toLowerCase(),
+    }))
+  }
 }
 
 function mapVerse(verse: ApiVerse): QuranVerse {
@@ -132,20 +162,53 @@ export async function getChapterVerses(chapterId: number): Promise<QuranVerse[]>
     per_page: String(PAGE_SIZE),
   })
 
-  const first = await quranFetch<ApiVerseResponse>(
-    `/verses/by_chapter/${chapterId}?${query.toString()}&page=1`,
-  )
-
-  const pages: ApiVerseResponse[] = [first]
-  for (let page = 2; page <= first.pagination.total_pages; page += 1) {
-    pages.push(
-      await quranFetch<ApiVerseResponse>(
-        `/verses/by_chapter/${chapterId}?${query.toString()}&page=${page}`,
-      ),
+  try {
+    const first = await quranFetch<ApiVerseResponse>(
+      `/verses/by_chapter/${chapterId}?${query.toString()}&page=1`,
     )
-  }
 
-  return pages.flatMap((page) => page.verses).map(mapVerse)
+    const pages: ApiVerseResponse[] = [first]
+    for (let page = 2; page <= first.pagination.total_pages; page += 1) {
+      pages.push(
+        await quranFetch<ApiVerseResponse>(
+          `/verses/by_chapter/${chapterId}?${query.toString()}&page=${page}`,
+        ),
+      )
+    }
+
+    return pages.flatMap((page) => page.verses).map(mapVerse)
+  } catch {
+    const payload = await fallbackFetch<{ data: Array<{ ayahs: Array<{
+      number: number
+      numberInSurah: number
+      text: string
+      audio?: string
+    }> }> }>(`/surah/${chapterId}/editions/quran-uthmani,ar.alafasy`)
+    const textEdition = payload.data[0]?.ayahs ?? []
+    const audioEdition = payload.data[1]?.ayahs ?? []
+    return textEdition.map((ayah, index) => {
+      const verseKey = `${chapterId}:${ayah.numberInSurah}`
+      const audioUrl = audioEdition[index]?.audio
+      const tokens = ayah.text.split(/\s+/).filter(Boolean)
+      return {
+        id: ayah.number,
+        chapterId,
+        number: ayah.numberInSurah,
+        verseKey,
+        textUthmani: ayah.text,
+        textSimple: ayah.text,
+        audioUrl,
+        words: tokens.map((arabic, wordIndex) => ({
+          arabic,
+          simple: arabic,
+          ayahNumber: ayah.numberInSurah,
+          verseKey,
+          wordIndex,
+          audioUrl: wordIndex === 0 ? audioUrl : undefined,
+        })),
+      }
+    })
+  }
 }
 
 export async function getQuranRange(

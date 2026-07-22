@@ -34,12 +34,13 @@ interface MateriItem {
 interface MateriClientProps {
   initialMaterials: MateriItem[]
   keilmuanList: Keilmuan[]
+  initialTopic?: string
 }
 
-export default function MateriClient({ initialMaterials, keilmuanList }: MateriClientProps) {
+export default function MateriClient({ initialMaterials, keilmuanList, initialTopic = '' }: MateriClientProps) {
   const [search, setSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTopic, setTopic] = useState('')
+  const [selectedTopic, setTopic] = useState(initialTopic)
 
   const handleSearch = () => setSearchQuery(search)
   const handleKeyDown = (event: React.KeyboardEvent) => {

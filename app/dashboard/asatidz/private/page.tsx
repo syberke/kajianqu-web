@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { CheckCircle2, ExternalLink, Link as LinkIcon, LoaderCircle, Plus, Video } from 'lucide-react'
 
 interface PrivateClassItem {
@@ -10,6 +10,7 @@ interface PrivateClassItem {
   passcode: string
   isActive: boolean
   createdAt: string
+  enrollments: Array<{ id: string; status: string; studentName: string; studentEmail: string }>
 }
 
 export default function CreatePrivateClass() {
@@ -20,10 +21,7 @@ export default function CreatePrivateClass() {
   const [created, setCreated] = useState<PrivateClassItem | null>(null)
   const [form, setForm] = useState({ title: '', zoomLink: '', passcode: '' })
 
-  const generatedPasscode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [])
-
   useEffect(() => {
-    setForm((current) => ({ ...current, passcode: generatedPasscode }))
     const load = async () => {
       const response = await fetch('/api/asatidz/private-classes', { headers: { Accept: 'application/json' } })
       const payload = (await response.json().catch(() => null)) as { classes?: PrivateClassItem[]; error?: string } | null
@@ -32,7 +30,26 @@ export default function CreatePrivateClass() {
       setLoading(false)
     }
     void load()
-  }, [generatedPasscode])
+  }, [])
+
+  const reviewEnrollment = async (enrollmentId: string, status: 'approved' | 'rejected') => {
+    const response = await fetch('/api/asatidz/private-classes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollmentId, status }),
+    })
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null
+      setError(payload?.error || 'Gagal memperbarui pendaftaran')
+      return
+    }
+    setClasses((items) => items.map((item) => ({
+      ...item,
+      enrollments: item.enrollments.map((enrollment) =>
+        enrollment.id === enrollmentId ? { ...enrollment, status } : enrollment,
+      ),
+    })))
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -72,7 +89,7 @@ export default function CreatePrivateClass() {
         </form>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex items-center gap-3"><LinkIcon className="text-emerald-700" /><h2 className="text-xl font-black text-slate-900">Riwayat Kelas</h2></div>{loading ? <div className="grid h-44 place-items-center"><LoaderCircle className="animate-spin text-emerald-700" /></div> : classes.length === 0 ? <p className="py-12 text-center text-sm text-slate-500">Belum ada kelas private.</p> : <div className="mt-5 space-y-3">{classes.map((item) => <article key={item.id} className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 p-5 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{item.isActive ? 'Aktif' : 'Nonaktif'}</span></div><h3 className="mt-2 font-black text-slate-900">{item.title}</h3><p className="mt-1 text-xs text-slate-500">Kode {item.passcode} · {new Date(item.createdAt).toLocaleString('id-ID')}</p></div><a href={item.zoomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-emerald-700"><ExternalLink size={16} /> Zoom</a></article>)}</div>}</section>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex items-center gap-3"><LinkIcon className="text-emerald-700" /><h2 className="text-xl font-black text-slate-900">Riwayat Kelas</h2></div>{loading ? <div className="grid h-44 place-items-center"><LoaderCircle className="animate-spin text-emerald-700" /></div> : classes.length === 0 ? <p className="py-12 text-center text-sm text-slate-500">Belum ada kelas private.</p> : <div className="mt-5 space-y-4">{classes.map((item) => <article key={item.id} className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{item.isActive ? 'Aktif' : 'Nonaktif'}</span><span className="text-xs text-slate-400">{item.enrollments.length} pendaftar</span></div><h3 className="mt-2 font-black text-slate-900">{item.title}</h3><p className="mt-1 text-xs text-slate-500">Kode {item.passcode} · {item.createdAt ? new Date(item.createdAt).toLocaleString('id-ID') : '-'}</p></div>{item.zoomLink && <a href={item.zoomLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-emerald-700"><ExternalLink size={16} /> Zoom</a>}</div>{item.enrollments.length > 0 && <div className="mt-5 space-y-2 border-t border-slate-100 pt-4">{item.enrollments.map((enrollment) => <div key={enrollment.id} className="flex flex-col justify-between gap-3 rounded-xl bg-slate-50 p-3 sm:flex-row sm:items-center"><div><p className="text-sm font-bold text-slate-800">{enrollment.studentName}</p><p className="text-xs text-slate-500">{enrollment.studentEmail} · {enrollment.status}</p></div>{enrollment.status === 'pending' && <div className="flex gap-2"><button onClick={() => void reviewEnrollment(enrollment.id, 'approved')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">Terima</button><button onClick={() => void reviewEnrollment(enrollment.id, 'rejected')} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">Tolak</button></div>}</div>)}</div>}</article>)}</div>}</section>
     </div>
   )
 }

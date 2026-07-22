@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Copy, CheckCircle2, ChevronRight } from 'lucide-react'
 
 const NOMINALS = [10000, 25000, 50000, 100000, 150000]
@@ -13,11 +14,11 @@ const imgCBT      = "https://images.unsplash.com/photo-1516321318423-f06f85e504b
 const imgIconStar = "https://cdn-icons-png.flaticon.com/512/1828/1828884.png"
 
 export default function InfaqAsatidzPage() {
+  const router = useRouter()
   const [selectedNominal, setSelectedNominal] = useState<number | null>(null)
   const [customNominal, setCustomNominal]     = useState('')
   const [paymentMethod, setPaymentMethod]     = useState('')
   const [copied, setCopied]                   = useState(false)
-  const [success, setSuccess]                 = useState(false)
 
   const formatRupiah = (n: string | number) =>
     n.toString().replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -31,24 +32,8 @@ export default function InfaqAsatidzPage() {
   const handleDonasi = () => {
     if (!selectedNominal && !customNominal) return alert('Pilih nominal terlebih dahulu')
     if (!paymentMethod) return alert('Pilih metode pembayaran')
-    setSuccess(true)
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#f8fffe] flex items-center justify-center p-8">
-        <div className="text-center space-y-6 max-w-md">
-          <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 size={48} className="text-[#157a52]" />
-          </div>
-          <h2 className="text-3xl font-bold text-[#0c1421]">Jazakumullahu Khairan!</h2>
-          <p className="text-gray-500">Donasi Infaq Asatidz kamu berhasil diproses. Semoga menjadi amal jariyah yang terus mengalir.</p>
-          <Link href="/" className="block bg-[#157a52] text-white py-4 rounded-xl font-bold hover:bg-[#0c2e1c] transition-all">
-            Kembali ke Beranda
-          </Link>
-        </div>
-      </div>
-    )
+    const nominal = selectedNominal ?? Number(customNominal.replace(/\D/g, ''))
+    router.push(`/dashboard/siswa/donation?category=infaq-asatidz&nominal=${nominal}`)
   }
 
   return (
@@ -65,7 +50,7 @@ export default function InfaqAsatidzPage() {
           <p className="text-[#d3ad0f] text-sm font-bold uppercase tracking-widest">Program Donasi</p>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight drop-shadow-md">Infaq Asatidz</h1>
           <p className="text-white/90 max-w-2xl mx-auto text-[14px] md:text-[16px] leading-relaxed">
-            Perbanyak pahala dengan amal jariyah, dengan salah satu program donasi kami yaitu Dengan Wakaf Al-Qur'an.
+            Perbanyak pahala dengan amal jariyah melalui program Wakaf Al-Qur&apos;an dan dukungan untuk para Asatidz.
           </p>
         </div>
       </section>

@@ -46,7 +46,8 @@ export default function AsatidzLayoutClient({
           <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard"      href="/dashboard/asatidz"          active={pathname === '/dashboard/asatidz'} />
           <SidebarItem icon={<BookOpen size={20} />}       label="Keilmuan"        href="/dashboard/asatidz/keilmuan" active={pathname.includes('/keilmuan')} />
           <SidebarItem icon={<Video size={20} />}          label="Live Streaming"  href="/dashboard/asatidz/live"     active={pathname.includes('/live')} />
-          <SidebarItem icon={<MessageSquare size={20} />}  label="Chat"            href="/dashboard/asatidz/chat"     active={pathname.includes('/chat')} badge="5" />
+          <SidebarItem icon={<Users size={20} />}          label="Kelas Private"   href="/dashboard/asatidz/private"  active={pathname.includes('/private')} />
+          <SidebarItem icon={<MessageSquare size={20} />}  label="Chat"            href="/dashboard/asatidz/chat"     active={pathname.includes('/chat')} />
           <SidebarItem icon={<Users size={20} />}          label="Profile"         href="/dashboard/asatidz/profile"  active={pathname.includes('/profile')} />
         </nav>
 

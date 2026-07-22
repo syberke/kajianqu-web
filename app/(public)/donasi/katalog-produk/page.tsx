@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import { Search, ChevronRight } from 'lucide-react'
 
 const imgBg = "https://images.unsplash.com/photo-1584281723358-466f28688439?auto=format&fit=crop&q=80&w=1400"
@@ -45,7 +44,7 @@ export default function KatalogProdukPage() {
           <p className="text-[#d3ad0f] text-sm font-bold uppercase tracking-widest">Program Donasi</p>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight drop-shadow-md">Katalog Produk</h1>
           <p className="text-white/90 max-w-2xl mx-auto text-[14px] md:text-[16px] leading-relaxed">
-            Perbanyak pahala dengan amal jariyah, dengan salah satu program donasi kami yaitu Dengan Wakaf Al-Qur'an.
+            Belanja produk pilihan sekaligus ikut menguatkan program kebaikan KajianQu.
           </p>
         </div>
       </section>

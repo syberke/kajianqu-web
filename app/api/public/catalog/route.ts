@@ -34,16 +34,20 @@ export async function GET() {
     privateClasses: privateClasses.map((item) => ({
       id: item.id,
       title: item.title,
-      zoom_link: item.zoomLink,
-      passcode: item.passcode,
-      created_at: item.createdAt.toISOString(),
+      description: item.description,
+      cover_url: item.coverUrl,
+      created_at: item.createdAt?.toISOString() ?? null,
       asatidz: item.asatidz ? { nama: item.asatidz.nama, foto_url: item.asatidz.fotoUrl } : null,
     })),
     donationProducts: donationProducts.map((item) => ({
       id: item.id,
-      name: item.name,
-      price: item.price.toNumber(),
-      image: item.image,
+      title: item.title,
+      description: item.description,
+      price: item.price?.toNumber() ?? null,
+      price_label: item.priceLabel,
+      stock: item.stock,
+      image_url: item.imageUrl,
+      whatsapp_url: item.whatsappUrl,
     })),
   })
 }

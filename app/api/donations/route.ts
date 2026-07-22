@@ -1,41 +1,54 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 
 import { getAuthenticatedUser } from '@/lib/auth/require-admin'
 import { db } from '@/lib/db'
+import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 
-interface DonationPayload {
-  category?: string
-  nominal?: number
-  methodId?: string
-  donorName?: string
-  note?: string
-  paymentProofUrl?: string
-}
+const donationSchema = z.object({
+  category: z.string().trim().max(80).optional(),
+  nominal: z.coerce.number().positive().max(1_000_000_000),
+  methodId: z.uuid(),
+  donorName: z.string().trim().max(120).optional(),
+  note: z.string().trim().max(1_000).optional(),
+  paymentProofUrl: z.string().trim().max(500).optional(),
+})
 
 export async function POST(request: Request) {
   const user = await getAuthenticatedUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const payload = (await request.json().catch(() => null)) as DonationPayload | null
-  const nominal = Number(payload?.nominal)
-  const methodId = payload?.methodId?.trim()
-  if (!Number.isFinite(nominal) || nominal <= 0 || !methodId) {
-    return NextResponse.json({ error: 'Nominal dan metode pembayaran wajib valid' }, { status: 400 })
+  const rate = checkRateLimit(`donation:${requestIdentity(request, user.id)}`, 10, 60_000)
+  if (!rate.allowed) {
+    return NextResponse.json({ error: 'Terlalu banyak percobaan. Silakan tunggu sebentar.' }, {
+      status: 429,
+      headers: { 'Retry-After': String(rate.retryAfterSeconds) },
+    })
   }
+
+  const parsed = donationSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Data donasi tidak valid' }, { status: 400 })
+  const payload = parsed.data
+  const { nominal, methodId } = payload
 
   const method = await db.donationMethod.findFirst({ where: { id: methodId, isActive: true }, select: { id: true } })
   if (!method) return NextResponse.json({ error: 'Metode pembayaran tidak tersedia' }, { status: 400 })
 
+  const proofPath = payload.paymentProofUrl || null
+  if (proofPath && !proofPath.startsWith(`${user.id}/`)) {
+    return NextResponse.json({ error: 'Lokasi bukti pembayaran tidak valid' }, { status: 400 })
+  }
+
   const donation = await db.donation.create({
     data: {
       userId: user.id,
-      category: payload?.category?.trim() || null,
+      category: payload.category || null,
       nominal,
       methodId,
-      donorName: payload?.donorName?.trim() || user.user_metadata?.nama || user.email || 'Hamba Allah',
-      note: payload?.note?.trim() || null,
+      donorName: payload.donorName || user.user_metadata?.nama || user.email || 'Hamba Allah',
+      note: payload.note || null,
       paymentStatus: 'pending',
-      paymentProofUrl: payload?.paymentProofUrl?.trim() || null,
+      paymentProofUrl: proofPath,
     },
   })
 

@@ -29,6 +29,12 @@ export default function StudentDonationPage() {
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
+    const search = new URLSearchParams(window.location.search)
+    const requestedCategory = search.get('category')
+    const requestedNominal = search.get('nominal')
+    if (requestedCategory) setCategory(requestedCategory.slice(0, 80))
+    if (requestedNominal && /^\d+$/.test(requestedNominal)) setNominal(requestedNominal)
+
     const load = async () => {
       const response = await fetch('/api/donation-methods', { headers: { Accept: 'application/json' } })
       const payload = (await response.json().catch(() => null)) as { methods?: DonationMethod[]; error?: string } | null
@@ -93,7 +99,7 @@ export default function StudentDonationPage() {
         {loading ? <div className="grid h-56 place-items-center"><LoaderCircle className="animate-spin text-emerald-700" /></div> : methods.length === 0 ? <p className="py-12 text-center text-slate-500">Belum ada metode donasi aktif.</p> : (
           <form onSubmit={submit} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label><span className="text-sm font-bold text-slate-700">Kategori</span><select value={category} onChange={(event) => setCategory(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4"><option value="operasional">Operasional</option><option value="dakwah">Program Dakwah</option><option value="pendidikan">Pendidikan</option></select></label>
+              <label><span className="text-sm font-bold text-slate-700">Kategori</span><select value={category} onChange={(event) => setCategory(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4"><option value="operasional">Operasional</option><option value="dakwah">Program Dakwah</option><option value="pendidikan">Pendidikan</option><option value="wakaf-quran">Wakaf Al-Qur&apos;an</option><option value="sodaqoh">Sodaqoh Jariyah</option><option value="infaq-asatidz">Infaq Asatidz</option></select></label>
               <label><span className="text-sm font-bold text-slate-700">Nominal</span><input required min="1000" type="number" value={nominal} onChange={(event) => setNominal(event.target.value)} placeholder="50000" className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-500" /></label>
             </div>
             <label><span className="text-sm font-bold text-slate-700">Nama donatur</span><input value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Kosongkan untuk nama akun" className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4" /></label>

@@ -39,7 +39,7 @@ export default function FormDonasi({ slug }: { slug: string }) {
         {/* Gambar Background Utama */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="/Screenshot 2026-03-27 160234.jpg" 
+            src="https://images.unsplash.com/photo-1584281723358-466f28688439?auto=format&fit=crop&q=85&w=1200"
             alt="Hero Background" 
             className="w-full h-full object-cover"
           />
@@ -161,9 +161,9 @@ export default function FormDonasi({ slug }: { slug: string }) {
                   </select>
                 </div>
 
-                <button className="w-full h-[60px] bg-[#157a52] text-white font-bold text-[16px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg shadow-[#157a52]/30">
+                <Link href={`/dashboard/siswa/donation?category=wakaf-quran&nominal=${selectedNominal ?? customNominal.replace(/\D/g, '')}`} className="flex w-full h-[60px] items-center justify-center bg-[#157a52] text-white font-bold text-[16px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg shadow-[#157a52]/30">
                   Donasi Sekarang
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -202,19 +202,19 @@ export default function FormDonasi({ slug }: { slug: string }) {
                     id: 'sodaqoh', 
                     title: "Sodaqoh Jariyah", 
                     desc: "Bantu pembangunan pondok pesantren dan fasilitas belajar.", 
-                    img: "/Perwira-Bangun-Sekolah 1.jpg" 
+                    img: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb0?auto=format&fit=crop&q=80&w=500"
                   },
                   { 
                     id: 'infaq-asatidz', 
                     title: "Infaq Asatidz", 
                     desc: "Bisyaroh untuk asatidz pengajar Al-Qur'an.", 
-                    img: "/Rectangle 23831 (1).png" 
+                    img: "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?auto=format&fit=crop&q=80&w=500"
                   },
                   { 
                     id: 'katalog-produk', 
                     title: "Katalog Produk", 
                     desc: "Beli produk sambil berdonasi untuk umat.", 
-                    img: "/Screenshot 2026-03-27 160857.jpg" 
+                    img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=500"
                   }
                 ].map((cat) => (
                   <Link
@@ -245,15 +245,15 @@ export default function FormDonasi({ slug }: { slug: string }) {
           
           <div className="space-y-6 text-[15px] md:text-[16px] text-gray-600 leading-relaxed text-justify max-w-4xl mx-auto">
             <p>
-              <strong>Assalamu'alaikum #OrangBaik,</strong>
+              <strong>Assalamu&apos;alaikum #OrangBaik,</strong>
             </p>
             <p>
-              Tahukah kamu? Di berbagai pelosok daerah, masih banyak santri dan saudara kita yang harus bergantian membaca Al-Qur'an karena jumlahnya yang sangat terbatas. Bahkan, tak jarang mereka harus mengeja ayat suci dari lembaran yang sudah usang, robek, dan halamannya tidak utuh lagi.
+              Tahukah kamu? Di berbagai pelosok daerah, masih banyak santri dan saudara kita yang harus bergantian membaca Al-Qur&apos;an karena jumlahnya yang sangat terbatas. Bahkan, tak jarang mereka harus mengeja ayat suci dari lembaran yang sudah usang, robek, dan halamannya tidak utuh lagi.
             </p>
             
             {/* Highlight Box Keutamaan */}
             <div className="bg-[#e8f5ee] p-6 md:p-8 rounded-[24px] border border-[#157a52]/20 my-8">
-              <p className="font-bold text-[#157a52] text-[18px] mb-4">Keutamaan Wakaf Al-Qur'an:</p>
+              <p className="font-bold text-[#157a52] text-[18px] mb-4">Keutamaan Wakaf Al-Qur&apos;an:</p>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
@@ -261,17 +261,17 @@ export default function FormDonasi({ slug }: { slug: string }) {
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Membantu Generasi Qur'ani:</strong> Fasilitas yang layak akan mempercepat dan memudahkan para santri dalam menghafal kalam Allah.</span>
+                  <span><strong>Membantu Generasi Qur&apos;ani:</strong> Fasilitas yang layak akan mempercepat dan memudahkan para santri dalam menghafal kalam Allah.</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Penolong di Akhirat:</strong> Al-Qur'an akan datang sebagai penolong (syafaat) di hari kiamat bagi siapa saja yang memuliakannya.</span>
+                  <span><strong>Penolong di Akhirat:</strong> Al-Qur&apos;an akan datang sebagai penolong (syafaat) di hari kiamat bagi siapa saja yang memuliakannya.</span>
                 </li>
               </ul>
             </div>
 
             <p>
-              Melalui program ini, KajianQu mengajak kamu untuk bersama-sama menghadirkan jutaan cahaya Al-Qur'an bagi mereka yang membutuhkan. Berapapun nominal yang kamu sisihkan, akan sangat berarti bagi perjuangan mereka.
+              Melalui program ini, KajianQu mengajak kamu untuk bersama-sama menghadirkan jutaan cahaya Al-Qur&apos;an bagi mereka yang membutuhkan. Berapapun nominal yang kamu sisihkan, akan sangat berarti bagi perjuangan mereka.
             </p>
             <p className="font-bold text-[#0c1421] pt-4 text-center">
               Jazakumullahu Khairan Katsiran.<br/>

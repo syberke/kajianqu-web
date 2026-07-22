@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     messages: messages.map((message) => ({
       id: message.id,
       content: message.content,
-      createdAt: message.createdAt.toISOString(),
+      createdAt: message.createdAt?.toISOString() ?? null,
       mine: message.senderId === user.id,
     })),
   })

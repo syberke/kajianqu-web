@@ -42,7 +42,7 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
         {/* Gambar Background Utama */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="/Screenshot 2026-03-27 160415.jpg" 
+            src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb0?auto=format&fit=crop&q=85&w=1200"
             alt="Hero Background Sodaqoh" 
             className="w-full h-full object-cover"
           />
@@ -171,9 +171,9 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
                   </div>
                 </div>
 
-                <button className="w-full h-[60px] bg-[#157a52] text-white font-bold text-[16px] md:text-[18px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg shadow-[#157a52]/30 tracking-wide">
+                <Link href={`/dashboard/siswa/donation?category=sodaqoh&nominal=${selectedNominal ?? customNominal.replace(/\D/g, '')}`} className="flex w-full h-[60px] items-center justify-center bg-[#157a52] text-white font-bold text-[16px] md:text-[18px] rounded-[16px] hover:bg-[#0c2e1c] active:scale-[0.98] transition-all shadow-lg shadow-[#157a52]/30 tracking-wide">
                   Donasi Sekarang
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
               <div className="flex items-center gap-4 relative z-10">
                 {/* Ikon Sodaqoh dengan background hijau pupus seperti referensi */}
                 <div className="w-16 h-16 bg-[#e8f5ee] border border-[#157a52]/20 flex items-center justify-center rounded-[16px] p-3 shrink-0">
-                   <img src="/Screenshot 2026-03-27 160438.png" alt="Icon Sodaqoh" className="w-full h-full object-contain" />
+                   <img src="https://images.unsplash.com/photo-1601288496920-b6154fe3626a?auto=format&fit=crop&q=80&w=400" alt="Icon Sodaqoh" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <p className="font-bold text-[#157a52] text-[18px]">KajianQU</p>
@@ -209,22 +209,22 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
               <div className="space-y-4">
                 {[
                   { 
-                    id: 'wakaf', 
+                    id: 'wakaf-quran',
                     title: "Wakaf Al-Qur'an", 
                     desc: "Bantu sediakan Al-Qur'an yang layak untuk pelosok.", 
-                    img: "/Screenshot 2026-03-27 160234.jpg" 
+                    img: "https://images.unsplash.com/photo-1584281723358-466f28688439?auto=format&fit=crop&q=80&w=500"
                   },
                   { 
-                    id: 'infaq', 
+                    id: 'infaq-asatidz',
                     title: "Infaq Asatidz", 
                     desc: "Bisyaroh untuk asatidz pengajar Al-Qur'an.", 
-                    img: "/Rectangle 23831 (1).png" 
+                    img: "https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?auto=format&fit=crop&q=80&w=500"
                   },
                   { 
-                    id: 'katalog', 
+                    id: 'katalog-produk',
                     title: "Katalog Produk", 
                     desc: "Beli produk sambil berdonasi untuk umat.", 
-                    img: "/Screenshot 2026-03-27 160857.jpg" 
+                    img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=500"
                   }
                 ].map((cat) => (
                   <Link
@@ -255,7 +255,7 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
           
           <div className="space-y-6 text-[15px] md:text-[16px] text-gray-600 leading-relaxed text-justify max-w-4xl mx-auto">
             <p>
-              <strong>Assalamu'alaikum #OrangBaik,</strong>
+              <strong>Assalamu&apos;alaikum #OrangBaik,</strong>
             </p>
             <p>
               Setiap langkah para penuntut ilmu (santri) yang berjalan menuju majelis ilmu, setiap huruf yang mereka hafal, dan setiap sujud yang mereka lakukan di pesantren, menyimpan jutaan berkah dan pahala. Namun sayangnya, masih banyak pondok pesantren dan madrasah yang kondisinya memprihatinkan dan kekurangan fasilitas belajar yang memadai.
@@ -275,13 +275,13 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={24} className="text-[#157a52] shrink-0 mt-0.5" />
-                  <span><strong>Membersihkan Harta:</strong> Sedekah akan mensucikan harta benda kita dan menjadikannya jauh lebih berkah di mata Allah Ta'ala.</span>
+                  <span><strong>Membersihkan Harta:</strong> Sedekah akan mensucikan harta benda kita dan menjadikannya jauh lebih berkah di mata Allah Ta&apos;ala.</span>
                 </li>
               </ul>
             </div>
 
             <p>
-              Mari bersama-sama kita bangun fasilitas belajar yang nyaman, madrasah yang kokoh, serta asrama yang layak bagi para generasi Qur'ani. Donasi yang kamu berikan hari ini, insyaAllah akan menjadi saksi kebaikanmu di akhirat kelak.
+              Mari bersama-sama kita bangun fasilitas belajar yang nyaman, madrasah yang kokoh, serta asrama yang layak bagi para generasi Qur&apos;ani. Donasi yang kamu berikan hari ini, insyaAllah akan menjadi saksi kebaikanmu di akhirat kelak.
             </p>
             <p className="font-bold text-[#0c1421] pt-4 text-center">
               Jazakumullahu Khairan Katsiran.<br/>

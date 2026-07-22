@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   const materials = await db.material.findMany({
     where: {
       isPublished: true,
+      reviewStatus: 'approved',
       ...(categoryId ? { keilmuanId: categoryId } : {}),
       ...(type ? { type } : {}),
       ...(search

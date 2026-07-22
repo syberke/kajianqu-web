@@ -1,10 +1,13 @@
 import { db } from '@/lib/db'
 import MateriClient from './MateriClient'
 
-export default async function MateriPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function MateriPage({ searchParams }: { searchParams: Promise<{ topik?: string }> }) {
+  const { topik } = await searchParams
   const [materials, categories] = await Promise.all([
     db.material.findMany({
-      where: { isPublished: true },
+      where: { isPublished: true, reviewStatus: 'approved' },
       orderBy: { createdAt: 'desc' },
       include: {
         keilmuan: { select: { id: true, nama: true } },
@@ -34,6 +37,7 @@ export default async function MateriPage() {
         asatidz: material.asatidz ? { nama: material.asatidz.nama, foto_url: material.asatidz.fotoUrl } : null,
       }))}
       keilmuanList={categories}
+      initialTopic={topik || ''}
     />
   )
 }

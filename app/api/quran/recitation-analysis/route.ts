@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
 import type { QuranRecitationAnalysis } from '@/types/quran'
+import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 
 const MAX_AUDIO_BYTES = 18 * 1024 * 1024
 
@@ -88,6 +89,9 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const rate = checkRateLimit(`recitation:${requestIdentity(request, user.id)}`, 12, 60 * 60 * 1_000)
+  if (!rate.allowed) return NextResponse.json({ error: 'Batas analisis bacaan sementara tercapai.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } })
+
   const formData = await request.formData().catch(() => null)
   if (!formData) return NextResponse.json({ error: 'Form audio tidak valid' }, { status: 400 })
 
@@ -107,6 +111,9 @@ export async function POST(request: Request) {
   if (!expectedText || !surahName || !Number.isInteger(ayahStart) || !Number.isInteger(ayahEnd)) {
     return NextResponse.json({ error: 'Konteks ayat tidak lengkap' }, { status: 400 })
   }
+  if (expectedText.length > 30_000 || transcript.length > 30_000 || surahName.length > 100) {
+    return NextResponse.json({ error: 'Konteks bacaan terlalu panjang.' }, { status: 413 })
+  }
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
@@ -117,7 +124,7 @@ export async function POST(request: Request) {
     const audioData = Buffer.from(await audio.arrayBuffer()).toString('base64')
     const client = new GoogleGenAI({ apiKey })
     const response = await client.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: process.env.GEMINI_ANALYSIS_MODEL || 'gemini-2.5-flash',
       contents: [
         {
           role: 'user',

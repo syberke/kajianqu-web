@@ -6,5 +6,5 @@ export default async function DashboardRedirectPage() {
 
   if (profile?.role === 'admin') redirect('/dashboard/admin')
   if (profile?.role === 'asatidz') redirect('/dashboard/asatidz')
-  redirect('/welcome')
+  redirect('/dashboard/siswa')
 }
