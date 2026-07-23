@@ -6,6 +6,8 @@ import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const MAX_AUDIO_BYTES = 18 * 1024 * 1024
+const MIN_AUDIO_BYTES = 1_024
+const MAX_TRANSCRIPTION_ATTEMPTS = 2
 
 const TRANSCRIPTION_SCHEMA = {
   type: Type.OBJECT,
@@ -14,6 +16,15 @@ const TRANSCRIPTION_SCHEMA = {
   },
   required: ['transcript'],
 } as const
+
+function normalizeAudioMimeType(mimeType: string): string {
+  const normalized = mimeType.toLowerCase()
+  if (normalized.includes('ogg')) return 'audio/ogg'
+  if (normalized.includes('wav')) return 'audio/wav'
+  if (normalized.includes('mpeg') || normalized.includes('mp3')) return 'audio/mpeg'
+  if (normalized.includes('mp4') || normalized.includes('m4a')) return 'audio/mp4'
+  return 'audio/webm'
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -44,6 +55,12 @@ export async function POST(request: Request) {
   if (!(audio instanceof File) || audio.size === 0 || !audio.type.startsWith('audio/')) {
     return NextResponse.json({ error: 'Rekaman audio wajib dikirim' }, { status: 400 })
   }
+  if (audio.size < MIN_AUDIO_BYTES) {
+    return NextResponse.json(
+      { error: 'Rekaman terlalu singkat atau tidak berisi suara. Silakan baca kembali.' },
+      { status: 422 },
+    )
+  }
   if (audio.size > MAX_AUDIO_BYTES) {
     return NextResponse.json({ error: 'Rekaman terlalu besar. Maksimal 18 MB.' }, { status: 413 })
   }
@@ -58,42 +75,66 @@ export async function POST(request: Request) {
 
   try {
     const audioData = Buffer.from(await audio.arrayBuffer()).toString('base64')
+    const mimeType = normalizeAudioMimeType(audio.type)
     const client = new GoogleGenAI({ apiKey })
-    const response = await client.models.generateContent({
-      model: process.env.GEMINI_ANALYSIS_MODEL || DEFAULT_GEMINI_ANALYSIS_MODEL,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `Transkripsikan bacaan Al-Qur'an yang benar-benar terdengar pada rekaman ke tulisan Arab.
+    let transcript = ''
+
+    for (let attempt = 0; attempt < MAX_TRANSCRIPTION_ATTEMPTS && !transcript; attempt += 1) {
+      const retryInstruction =
+        attempt === 0
+          ? ''
+          : '\nIni percobaan ulang. Fokus pada suara manusia yang terdengar dan jangan mengembalikan teks kosong jika masih ada lafaz yang dapat dikenali.'
+
+      const response = await client.models.generateContent({
+        model: process.env.GEMINI_ANALYSIS_MODEL || DEFAULT_GEMINI_ANALYSIS_MODEL,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `Transkripsikan bacaan Al-Qur'an yang benar-benar terdengar pada rekaman ke tulisan Arab.
 
 Teks ayat acuan berikut hanya boleh dipakai untuk ejaan dan pencocokan kata:
 ${expectedText}
 
-Jangan menambahkan kata yang tidak terdengar. Jangan memberi penjelasan, terjemahan, penilaian, atau markdown. Jika audio tidak dapat dipahami, kembalikan transcript kosong.`,
-            },
-            {
-              inlineData: {
-                mimeType: audio.type || 'audio/webm',
-                data: audioData,
+Jangan menambahkan kata yang tidak terdengar. Jangan memberi penjelasan, terjemahan, penilaian, atau markdown. Jika benar-benar tidak ada suara manusia yang dapat dikenali, kembalikan transcript kosong.${retryInstruction}`,
               },
-            },
-          ],
+              {
+                inlineData: {
+                  mimeType,
+                  data: audioData,
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: TRANSCRIPTION_SCHEMA,
+          temperature: 0,
         },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: TRANSCRIPTION_SCHEMA,
-        temperature: 0,
-      },
-    })
+      })
 
-    const rawText = response.text
-    if (!rawText) throw new Error('Gemini tidak mengembalikan transkripsi')
-    const parsed = JSON.parse(rawText) as { transcript?: unknown }
-    const transcript = typeof parsed.transcript === 'string' ? parsed.transcript.trim() : ''
-    if (!transcript) throw new Error('Bacaan tidak dapat ditranskripsikan dari rekaman')
+      const rawText = response.text
+      if (!rawText) continue
+
+      try {
+        const parsed = JSON.parse(rawText) as { transcript?: unknown }
+        transcript = typeof parsed.transcript === 'string' ? parsed.transcript.trim() : ''
+      } catch {
+        console.warn('Gemini returned an invalid Quran transcription payload')
+      }
+    }
+
+    if (!transcript) {
+      return NextResponse.json(
+        {
+          error:
+            'Bacaan belum dapat dikenali dari rekaman. Dekatkan mikrofon, baca lebih jelas, lalu coba kembali.',
+        },
+        { status: 422 },
+      )
+    }
 
     return NextResponse.json({ transcript })
   } catch (error) {

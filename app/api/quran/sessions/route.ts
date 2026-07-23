@@ -35,6 +35,21 @@ function isSessionPayload(payload: unknown): payload is SessionPayload {
   )
 }
 
+function databaseErrorResponse(error: unknown) {
+  const isPoolTimeout =
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2024'
+
+  console.error('Quran session database operation failed', error)
+  return NextResponse.json(
+    {
+      error: isPoolTimeout
+        ? 'Database sedang sibuk. Silakan coba simpan kembali beberapa saat lagi.'
+        : 'Gagal menyimpan sesi Al-Qur’an.',
+    },
+    { status: isPoolTimeout ? 503 : 500 },
+  )
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -48,43 +63,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Payload sesi Qur’an tidak valid' }, { status: 400 })
   }
 
-  const session = await db.$transaction(async (tx) => {
-    const created = await tx.quranSession.create({
-      data: {
-        userId: user.id,
-        mode: payload.mode,
-        surahId: payload.surahId,
-        surahName: payload.surahName,
-        ayahStart: payload.ayahStart,
-        ayahEnd: payload.ayahEnd,
-        totalWords: payload.totalWords,
-        correctWords: payload.correctWords,
-        accuracy: payload.accuracy,
-        mistakes: payload.mistakes as unknown as Prisma.InputJsonValue,
-        transcript: payload.transcript,
-        durationSeconds: payload.durationSeconds,
-      },
-    })
-
-    if (payload.mistakes.length > 0) {
-      await tx.quranMistake.createMany({
-        data: payload.mistakes.map((mistake) => ({
-          sessionId: created.id,
+  try {
+    const session = await db.$transaction(async (tx) => {
+      const created = await tx.quranSession.create({
+        data: {
           userId: user.id,
+          mode: payload.mode,
           surahId: payload.surahId,
-          ayahNumber: mistake.ayahNumber,
-          wordArabic: mistake.wordArabic,
-          wordSpoken: mistake.wordSpoken,
-          kind: mistake.kind,
-          confidence: mistake.confidence,
-        })),
+          surahName: payload.surahName,
+          ayahStart: payload.ayahStart,
+          ayahEnd: payload.ayahEnd,
+          totalWords: payload.totalWords,
+          correctWords: payload.correctWords,
+          accuracy: payload.accuracy,
+          mistakes: payload.mistakes as unknown as Prisma.InputJsonValue,
+          transcript: payload.transcript,
+          durationSeconds: payload.durationSeconds,
+        },
       })
-    }
-
-    return created
-  })
-
-  return NextResponse.json({ id: session.id }, { status: 201 })
+  
+      if (payload.mistakes.length > 0) {
+        await tx.quranMistake.createMany({
+          data: payload.mistakes.map((mistake) => ({
+            sessionId: created.id,
+            userId: user.id,
+            surahId: payload.surahId,
+            ayahNumber: mistake.ayahNumber,
+            wordArabic: mistake.wordArabic,
+            wordSpoken: mistake.wordSpoken,
+            kind: mistake.kind,
+            confidence: mistake.confidence,
+          })),
+        })
+      }
+  
+      return created
+    })
+  
+    return NextResponse.json({ id: session.id }, { status: 201 })
+  } catch (error) {
+    return databaseErrorResponse(error)
+  }
 }
 
 export async function GET(request: Request) {
