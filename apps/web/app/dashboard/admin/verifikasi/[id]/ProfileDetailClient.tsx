@@ -15,12 +15,11 @@ import {
   Phone,
   Save,
   ShieldCheck,
-  Trash2,
   Users,
   XCircle,
 } from 'lucide-react'
 
-import { hapusUser, toggleVerifikasiAsatidz, updateUser } from '../action'
+import { reviewAsatidzApplication, updateUser } from '../action'
 
 interface AsatidzDetail {
   id: string
@@ -33,12 +32,35 @@ interface AsatidzDetail {
   asatidz_profiles: {
     bidang: string | null
     approved: boolean
+    status: string
+    asatidz_code: string | null
+    title: string | null
+    formal_education: string | null
+    nonformal_education: string | null
+    memorization_juz: number | null
+    sanad_history: string | null
+    bank: string | null
+    bank_account_type: string | null
+    bank_account_name: string | null
+    no_rekening: string | null
+    teaching_area: string | null
+    review_note: string | null
+    submitted_at: string | null
     cv_url: string | null
     latar_belakang: string | null
     sertifikat: string | null
     keahlian: string | null
     pengalaman_mengajar: string | null
     bio: string | null
+    expertise: Array<{ id: string; name: string }>
+    documents: Array<{
+      id: string
+      type: string
+      status: string
+      sizeBytes: number
+      uploadedAt: string
+      url: string | null
+    }>
   } | null
   stats: {
     totalClasses: number
@@ -63,6 +85,7 @@ export default function ProfileDetailClient({ user }: { user: AsatidzDetail }) {
     nama: user.nama,
     no_wa: user.no_wa || '',
   })
+  const [reviewNote, setReviewNote] = useState(user.asatidz_profiles?.review_note || '')
 
   const approved = user.asatidz_profiles?.approved ?? false
   const initials = user.nama
@@ -85,30 +108,19 @@ export default function ProfileDetailClient({ user }: { user: AsatidzDetail }) {
     router.refresh()
   }
 
-  const toggleApproval = async () => {
-    const message = approved
-      ? 'Cabut verifikasi Asatidz ini?'
-      : 'Verifikasi Asatidz ini?'
-    if (!window.confirm(message)) return
+  const decide = async (decision: 'APPROVED' | 'REVISION_REQUIRED' | 'REJECTED') => {
+    const labels = {
+      APPROVED: 'setujui',
+      REVISION_REQUIRED: 'minta revisi untuk',
+      REJECTED: 'tolak',
+    }
+    if (!window.confirm(`Yakin ingin ${labels[decision]} pendaftaran ${user.nama}?`)) return
 
-    setLoadingAction('approval')
-    const result = await toggleVerifikasiAsatidz(user.id, approved)
+    setLoadingAction(decision)
+    const result = await reviewAsatidzApplication(user.id, decision, reviewNote)
     setLoadingAction(null)
     if (result.error) alert(result.error)
     else router.refresh()
-  }
-
-  const removeUser = async () => {
-    if (!window.confirm(`Tolak dan hapus akun ${user.nama}? Tindakan ini permanen.`)) return
-    setLoadingAction('delete')
-    const result = await hapusUser(user.id)
-    setLoadingAction(null)
-    if (result.error) {
-      alert(result.error)
-      return
-    }
-    router.push('/dashboard/admin/verifikasi')
-    router.refresh()
   }
 
   return (
@@ -130,11 +142,12 @@ export default function ProfileDetailClient({ user }: { user: AsatidzDetail }) {
               {user.foto_url ? <img src={user.foto_url} alt={user.nama} className="h-full w-full object-cover" /> : initials}
             </div>
             <h2 className="mt-4 text-xl font-black text-gray-900">{user.nama}</h2>
-            <p className="mt-1 text-sm text-gray-500">{user.asatidz_profiles?.bidang || 'Bidang belum diisi'}</p>
+            <p className="mt-1 text-sm text-gray-500">{user.asatidz_profiles?.title ? `${user.asatidz_profiles.title} · ` : ''}{user.asatidz_profiles?.bidang || 'Bidang belum diisi'}</p>
             <span className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black ${approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
               {approved ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
               {approved ? 'Terverifikasi' : 'Menunggu Verifikasi'}
             </span>
+            {user.asatidz_profiles?.asatidz_code && <p className="mt-3 font-mono text-xs font-black text-emerald-800">{user.asatidz_profiles.asatidz_code}</p>}
 
             <div className="mt-6 space-y-3 border-t border-gray-100 pt-5 text-left text-sm">
               <div className="flex items-start gap-3"><Mail size={16} className="mt-0.5 text-gray-400" /><span className="break-all text-gray-700">{user.email || '-'}</span></div>
@@ -142,23 +155,32 @@ export default function ProfileDetailClient({ user }: { user: AsatidzDetail }) {
               <div className="flex items-start gap-3"><GraduationCap size={16} className="mt-0.5 text-gray-400" /><span className="text-gray-700">Bergabung {new Date(user.created_at).toLocaleDateString('id-ID')}</span></div>
             </div>
 
-            {user.asatidz_profiles?.cv_url ? (
-              <a href={user.asatidz_profiles.cv_url} target="_blank" rel="noreferrer" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#064E3B] px-4 py-3 text-sm font-bold text-white">
-                <Download size={17} /> Buka CV / Portofolio
-              </a>
-            ) : (
-              <div className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-400">CV belum diunggah</div>
-            )}
+            <div className="mt-5 space-y-2">
+              {(user.asatidz_profiles?.documents ?? []).length === 0 ? (
+                <div className="rounded-xl bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-400">Dokumen belum diunggah</div>
+              ) : user.asatidz_profiles?.documents.map((document) => document.url ? (
+                <a key={document.id} href={document.url} target="_blank" rel="noreferrer" className="flex w-full items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left text-xs font-bold text-emerald-800">
+                  <span className="truncate capitalize">{document.type.replaceAll('_', ' ')}</span><Download size={15} />
+                </a>
+              ) : null)}
+            </div>
           </section>
 
           <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
             <div className="flex items-center gap-2 text-emerald-800"><ShieldCheck size={18} /><h3 className="font-black">Aksi Verifikasi</h3></div>
-            <button type="button" onClick={() => void toggleApproval()} disabled={loadingAction !== null} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white disabled:opacity-60 ${approved ? 'bg-amber-600' : 'bg-emerald-700'}`}>
-              {loadingAction === 'approval' ? <LoaderCircle className="animate-spin" size={17} /> : approved ? <XCircle size={17} /> : <CheckCircle2 size={17} />}
-              {approved ? 'Cabut Verifikasi' : 'Setujui Asatidz'}
+            <label className="mt-4 block">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-800">Catatan review</span>
+              <textarea rows={4} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Wajib untuk revisi atau penolakan..." className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+            </label>
+            <button type="button" onClick={() => void decide('APPROVED')} disabled={loadingAction !== null || approved} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white disabled:opacity-50">
+              {loadingAction === 'APPROVED' ? <LoaderCircle className="animate-spin" size={17} /> : <CheckCircle2 size={17} />}
+              Setujui Asatidz
             </button>
-            <button type="button" onClick={() => void removeUser()} disabled={loadingAction !== null} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-600 disabled:opacity-60">
-              {loadingAction === 'delete' ? <LoaderCircle className="animate-spin" size={17} /> : <Trash2 size={17} />} Hapus Akun
+            <button type="button" onClick={() => void decide('REVISION_REQUIRED')} disabled={loadingAction !== null} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 disabled:opacity-60">
+              {loadingAction === 'REVISION_REQUIRED' ? <LoaderCircle className="animate-spin" size={17} /> : <Edit3 size={17} />} Minta Revisi
+            </button>
+            <button type="button" onClick={() => void decide('REJECTED')} disabled={loadingAction !== null} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-600 disabled:opacity-60">
+              {loadingAction === 'REJECTED' ? <LoaderCircle className="animate-spin" size={17} /> : <XCircle size={17} />} Tolak Pendaftaran
             </button>
           </section>
         </aside>
@@ -189,13 +211,28 @@ export default function ProfileDetailClient({ user }: { user: AsatidzDetail }) {
             ) : (
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <Info label="Bidang" value={user.asatidz_profiles?.bidang} />
-                <Info label="Keahlian" value={user.asatidz_profiles?.keahlian} />
+                <Info label="Keahlian" value={user.asatidz_profiles?.expertise.map((item) => item.name).join(', ') || user.asatidz_profiles?.keahlian} />
                 <Info label="Latar Belakang" value={user.asatidz_profiles?.latar_belakang} />
+                <Info label="Pendidikan Formal" value={user.asatidz_profiles?.formal_education} />
+                <Info label="Pendidikan Nonformal" value={user.asatidz_profiles?.nonformal_education} />
                 <Info label="Pengalaman Mengajar" value={user.asatidz_profiles?.pengalaman_mengajar} />
-                <Info label="Sertifikat" value={user.asatidz_profiles?.sertifikat} />
+                <Info label="Hafalan" value={user.asatidz_profiles?.memorization_juz === null ? null : `${user.asatidz_profiles?.memorization_juz} juz`} />
+                <Info label="Riwayat Sanad" value={user.asatidz_profiles?.sanad_history} />
+                <Info label="Wilayah Mengajar" value={user.asatidz_profiles?.teaching_area} />
                 <Info label="Bio" value={user.asatidz_profiles?.bio} />
               </div>
             )}
+          </section>
+
+          <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-black text-gray-900">Data Rekening Fee</h2>
+            <p className="mt-1 text-sm text-gray-500">Data privat ini hanya terlihat oleh admin dan pemilik akun.</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Info label="Bank" value={user.asatidz_profiles?.bank} />
+              <Info label="Jenis Rekening" value={user.asatidz_profiles?.bank_account_type} />
+              <Info label="Nama Pemilik" value={user.asatidz_profiles?.bank_account_name} />
+              <Info label="Nomor Rekening" value={user.asatidz_profiles?.no_rekening} />
+            </div>
           </section>
 
           <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">

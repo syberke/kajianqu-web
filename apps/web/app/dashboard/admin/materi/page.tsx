@@ -6,6 +6,7 @@ export default async function MateriPage() {
   await requireRole('admin')
 
   const materials = await db.material.findMany({
+    where: { workflowStatus: { notIn: ['DRAFT', 'ARCHIVED'] } },
     orderBy: { createdAt: 'desc' },
     include: { asatidz: { select: { nama: true } } },
   })
@@ -23,6 +24,7 @@ export default async function MateriPage() {
     asatidz_id: material.asatidzId,
     is_published: material.isPublished,
     status: material.reviewStatus,
+    workflow_status: material.workflowStatus,
     review_note: material.reviewNote,
     created_at: material.createdAt.toISOString(),
     updated_at: material.updatedAt.toISOString(),

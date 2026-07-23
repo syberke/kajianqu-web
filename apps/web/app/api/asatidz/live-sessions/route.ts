@@ -1,33 +1,40 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 
 import { requireAsatidz } from '@/lib/auth/require-asatidz'
 import { db } from '@/lib/db'
 
-interface LivePayload {
-  title?: string
-  description?: string
-  youtubeUrl?: string
-  scheduledAt?: string
-}
+const liveSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  description: z.string().trim().max(4_000).optional(),
+  provider: z.enum(['youtube', 'zoom', 'external']),
+  startsAt: z.iso.datetime(),
+  estimatedMinutes: z.coerce.number().int().min(10).max(720),
+  eventUrl: z.url().max(500),
+  passcode: z.string().trim().max(80).optional(),
+  visibility: z.enum(['public', 'members']).default('public'),
+})
 
 export async function GET() {
   const user = await requireAsatidz()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const sessions = await db.liveSession.findMany({
+  const sessions = await db.liveEvent.findMany({
     where: { asatidzId: user.id },
-    orderBy: { scheduledAt: 'desc' },
+    orderBy: { startsAt: 'desc' },
   })
-
   return NextResponse.json({
     sessions: sessions.map((session) => ({
       id: session.id,
       title: session.title,
       description: session.description,
-      youtubeUrl: session.youtubeUrl,
-      streamUrl: session.streamUrl,
+      provider: session.provider,
+      startsAt: session.startsAt.toISOString(),
+      estimatedMinutes: session.estimatedMinutes,
+      eventUrl: session.eventUrl,
+      passcode: session.passcode,
+      visibility: session.visibility,
       status: session.status,
-      scheduledAt: session.scheduledAt?.toISOString() ?? null,
     })),
   })
 }
@@ -36,34 +43,26 @@ export async function POST(request: Request) {
   const user = await requireAsatidz()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const payload = (await request.json().catch(() => null)) as LivePayload | null
-  const title = payload?.title?.trim()
-  const scheduledAt = payload?.scheduledAt ? new Date(payload.scheduledAt) : null
-  if (!title || !scheduledAt || Number.isNaN(scheduledAt.getTime())) {
-    return NextResponse.json({ error: 'Judul dan jadwal live wajib valid' }, { status: 400 })
+  const parsed = liveSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Data live belum lengkap atau tidak valid.', fields: parsed.error.flatten().fieldErrors }, { status: 400 })
+  const data = parsed.data
+  if (data.provider === 'zoom' && !data.passcode?.trim()) {
+    return NextResponse.json({ error: 'Passcode wajib diisi untuk live Zoom.' }, { status: 400 })
   }
 
-  const session = await db.liveSession.create({
+  const session = await db.liveEvent.create({
     data: {
-      title,
-      description: payload?.description?.trim() || null,
-      youtubeUrl: payload?.youtubeUrl?.trim() || null,
-      streamUrl: payload?.youtubeUrl?.trim() || null,
-      status: scheduledAt.getTime() <= Date.now() ? 'live' : 'upcoming',
+      title: data.title,
+      description: data.description?.trim() || null,
+      provider: data.provider,
+      startsAt: new Date(data.startsAt),
+      estimatedMinutes: data.estimatedMinutes,
+      eventUrl: data.eventUrl,
+      passcode: data.passcode?.trim() || null,
+      visibility: data.visibility,
+      status: new Date(data.startsAt).getTime() <= Date.now() ? 'live' : 'scheduled',
       asatidzId: user.id,
-      scheduledAt,
     },
   })
-
-  return NextResponse.json({
-    session: {
-      id: session.id,
-      title: session.title,
-      description: session.description,
-      youtubeUrl: session.youtubeUrl,
-      streamUrl: session.streamUrl,
-      status: session.status,
-      scheduledAt: session.scheduledAt?.toISOString() ?? null,
-    },
-  }, { status: 201 })
+  return NextResponse.json({ session: { id: session.id, status: session.status } }, { status: 201 })
 }

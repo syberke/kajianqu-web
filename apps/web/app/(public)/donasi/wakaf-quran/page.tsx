@@ -7,7 +7,7 @@ import { Copy, CheckCircle2 } from "lucide-react"
 // Jika kamu butuh data dari file lokalmu, pastikan import ini di-uncomment:
 // import { categories } from "../data/donasi"
 
-export default function FormDonasi({ slug }: { slug: string }) {
+export default function FormDonasi() {
   // Dummy fallback untuk judul jika categories tidak ditemukan
   const fallbackData = { title: "Wakaf Al-Qur'an", description: "Bantu sediakan Al-Qur'an layak untuk pelosok." }
   // const data = categories?.find((c) => c.slug === slug) || fallbackData

@@ -7,7 +7,7 @@ import { Copy, CheckCircle2 } from "lucide-react"
 // Jika kamu butuh data dari file lokalmu, pastikan import ini di-uncomment:
 // import { categories } from "../data/donasi"
 
-export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
+export default function FormDonasiSodaqoh() {
   // Dummy fallback untuk judul khusus Sodaqoh Jariyah
   const fallbackData = { 
     title: "Sodaqoh Jariyah", 

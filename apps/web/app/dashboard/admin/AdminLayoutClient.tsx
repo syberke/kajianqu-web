@@ -5,7 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Bell,
+  Award,
   BookOpen,
+  Tags,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -31,7 +34,10 @@ interface AdminSidebarProps {
 const NAV_ITEMS = [
   { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/admin/verifikasi', label: 'Verifikasi', icon: Users },
+  { href: '/dashboard/admin/expertise', label: 'Keilmuan', icon: Tags },
   { href: '/dashboard/admin/materi', label: 'Materi', icon: BookOpen },
+  { href: '/dashboard/admin/fees', label: 'Fee Asatidz', icon: HandCoins },
+  { href: '/dashboard/admin/achievements', label: 'Achievement', icon: Award },
   { href: '/dashboard/admin/donasi', label: 'Donasi', icon: Wallet },
   { href: '/dashboard/admin/reports', label: 'Reports', icon: Users },
 ] as const
@@ -89,7 +95,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const page = useMemo(() => {
     if (pathname.startsWith('/dashboard/admin/donasi')) return ['Donasi', 'Kelola transaksi dan program donasi.']
     if (pathname.startsWith('/dashboard/admin/materi')) return ['Materi Keilmuan', 'Kelola konten pembelajaran KajianQu.']
+    if (pathname.startsWith('/dashboard/admin/fees')) return ['Fee Asatidz', 'Tetapkan fee materi yang telah dipublikasikan.']
+    if (pathname.startsWith('/dashboard/admin/achievements')) return ['Achievement', 'Kelola tag pencapaian pengguna.']
     if (pathname.startsWith('/dashboard/admin/verifikasi')) return ['Verifikasi Asatidz', 'Tinjau dan kelola pendaftaran asatidz.']
+    if (pathname.startsWith('/dashboard/admin/expertise')) return ['Tag Keilmuan', 'Kelola pilihan keilmuan Asatidz.']
     if (pathname.startsWith('/dashboard/admin/reports')) return ['Reports', 'Unduh laporan operasional aplikasi.']
     if (pathname.startsWith('/dashboard/admin/settings')) return ['Settings', 'Konfigurasi sistem dan layanan.']
     return ['Dashboard', 'Ringkasan aktivitas KajianQu.']

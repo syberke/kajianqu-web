@@ -11,7 +11,8 @@ const donationSchema = z.object({
   methodId: z.uuid(),
   donorName: z.string().trim().max(120).optional(),
   note: z.string().trim().max(1_000).optional(),
-  paymentProofUrl: z.string().trim().max(500).optional(),
+  paymentProofUrl: z.string().trim().min(8).max(500),
+  idempotencyKey: z.string().trim().min(16).max(128),
 })
 
 export async function POST(request: Request) {
@@ -34,23 +35,26 @@ export async function POST(request: Request) {
   const method = await db.donationMethod.findFirst({ where: { id: methodId, isActive: true }, select: { id: true } })
   if (!method) return NextResponse.json({ error: 'Metode pembayaran tidak tersedia' }, { status: 400 })
 
-  const proofPath = payload.paymentProofUrl || null
-  if (proofPath && !proofPath.startsWith(`${user.id}/`)) {
+  const proofPath = payload.paymentProofUrl
+  if (!proofPath.startsWith(`${user.id}/`)) {
     return NextResponse.json({ error: 'Lokasi bukti pembayaran tidak valid' }, { status: 400 })
   }
 
-  const donation = await db.donation.create({
-    data: {
-      userId: user.id,
-      category: payload.category || null,
-      nominal,
-      methodId,
-      donorName: payload.donorName || user.user_metadata?.nama || user.email || 'Hamba Allah',
-      note: payload.note || null,
-      paymentStatus: 'pending',
-      paymentProofUrl: proofPath,
-    },
-  })
+  const existing = await db.donation.findUnique({ where: { idempotencyKey: payload.idempotencyKey } })
+  const donation = existing ?? await db.donation.create({
+      data: {
+        userId: user.id,
+        category: payload.category || null,
+        nominal,
+        methodId,
+        donorName: payload.donorName || user.user_metadata?.nama || user.email || 'Hamba Allah',
+        note: payload.note || null,
+        paymentStatus: 'pending',
+        paymentProofUrl: proofPath,
+        idempotencyKey: payload.idempotencyKey,
+      },
+    })
+  if (donation.userId !== user.id) return NextResponse.json({ error: 'Permintaan duplikat tidak valid.' }, { status: 409 })
 
   return NextResponse.json({ id: donation.id, status: donation.paymentStatus }, { status: 201 })
 }

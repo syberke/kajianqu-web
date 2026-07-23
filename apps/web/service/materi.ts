@@ -5,6 +5,10 @@ export interface AsatidzMaterial {
   summary: string | null
   type: string | null
   isPublished: boolean
+  workflowStatus: string
+  reviewNote: string | null
+  youtubeUrl: string | null
+  durationMinutes: number | null
   createdAt: string
   keilmuan: { nama: string } | null
 }
@@ -12,8 +16,13 @@ export interface AsatidzMaterial {
 interface CreateAsatidzMaterialInput {
   title: string
   summary?: string
+  description?: string
+  youtubeUrl?: string
+  durationMinutes?: number
+  referencesText?: string
   type?: string
   keilmuanId?: string
+  submitForReview?: boolean
 }
 
 async function readJson<T>(response: Response, fallback: string): Promise<T> {
@@ -73,6 +82,15 @@ export const MateriService = {
     const payload = await readJson<{ material?: AsatidzMaterial }>(response, 'Gagal membuat materi')
     if (!payload.material) throw new Error('Materi tidak dikembalikan server')
     return payload.material
+  },
+
+  async updateAsatidzMaterial(id: string, input: CreateAsatidzMaterialInput): Promise<void> {
+    const response = await fetch(`/api/asatidz/materials/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(input),
+    })
+    await readJson<{ material?: { id: string } }>(response, 'Gagal memperbarui materi')
   },
 
   async deleteMaterial(id: string): Promise<void> {

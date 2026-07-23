@@ -10,9 +10,10 @@ export default function MateriListClient({ initialMateri }: { initialMateri: any
 
   // Mapping status berdasarkan flag is_published dari database jika kolom status eksplisit belum ada
   const getMappedStatus = (item: any) => {
-    if (item.is_published) return 'approved'
-    // Anda bisa menyesuaikan kondisi ini jika menambahkan kolom 'status' kustom di database
-    if (item.status) return item.status 
+    if (item.workflow_status === 'PUBLISHED' || item.is_published) return 'approved'
+    if (['REVISION_REQUIRED', 'REJECTED'].includes(item.workflow_status)) return 'rejected'
+    if (['SUBMITTED', 'IN_REVIEW'].includes(item.workflow_status)) return 'pending'
+    if (item.status) return item.status
     return 'pending'
   }
 
