@@ -116,6 +116,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const playbackRunRef = useRef(0)
   const referenceAudioRef = useRef<HTMLAudioElement | null>(null)
+  const stopInFlightRef = useRef(false)
 
   const handleTranscript = useCallback((nextTranscript: string) => setTranscript(nextTranscript), [])
   const handleLiveError = useCallback((message: string) => {
@@ -197,6 +198,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
 
   const resetRecitation = useCallback(() => {
     clearTimer()
+    stopInFlightRef.current = false
     resetTranscript()
     setTranscript('')
     setAlignment({ ...EMPTY_ALIGNMENT, states: words.map(() => 'idle') })
@@ -225,10 +227,11 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
     resetRecitation()
     setLearningStep('read')
     setStatus('connecting')
-    startedAtRef.current = Date.now()
     const started = await startRecording()
     if (!started) return
 
+    startedAtRef.current = Date.now()
+    setElapsedSeconds(0)
     setStatus('recording')
     timerRef.current = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
@@ -290,37 +293,57 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
   }, [expectedText])
 
   const stop = useCallback(async () => {
+    if (stopInFlightRef.current) return
+    stopInFlightRef.current = true
     clearTimer()
-    setStatus('processing')
-    const recording = await stopRecording()
-    let finalRecording = recording
 
-    if (!recording.transcript && recording.audioBlob) {
-      setIsAnalyzing(true)
-      setAnalysisError('')
-      try {
-        const fallbackTranscript = await requestTranscription(recording)
-        finalRecording = { ...recording, transcript: fallbackTranscript }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Transkripsi rekaman gagal'
-        setAnalysisError(message)
-        setErrorMessage(message)
-      } finally {
-        setIsAnalyzing(false)
-      }
-    }
-
-    const finalAlignment = alignRecitation(words, finalRecording.transcript, true)
-    const durationSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1_000))
-
-    setLastRecording(finalRecording)
-    setTranscript(finalRecording.transcript)
-    setAlignment(finalAlignment)
+    const stoppedAt = Date.now()
+    const durationSeconds = Math.max(
+      1,
+      Math.round((stoppedAt - (startedAtRef.current || stoppedAt)) / 1_000),
+    )
     setElapsedSeconds(durationSeconds)
-    setIsSaving(true)
+    setStatus('processing')
+    setErrorMessage('')
 
-    const tasks: Promise<unknown>[] = [
-      saveSession({
+    try {
+      const recording = await stopRecording()
+      let finalRecording = recording
+      let transcriptionError = ''
+
+      if (!recording.transcript.trim() && recording.audioBlob) {
+        setIsAnalyzing(true)
+        setAnalysisError('')
+        try {
+          const fallbackTranscript = await requestTranscription(recording)
+          finalRecording = { ...recording, transcript: fallbackTranscript }
+        } catch (error) {
+          transcriptionError = error instanceof Error ? error.message : 'Transkripsi rekaman gagal'
+          setAnalysisError(transcriptionError)
+        } finally {
+          setIsAnalyzing(false)
+        }
+      }
+
+      if (!finalRecording.transcript.trim()) {
+        const message =
+          transcriptionError ||
+          'Bacaan belum dapat dikenali. Pastikan mikrofon menangkap suara dengan jelas lalu coba lagi.'
+        setLastRecording(finalRecording)
+        setTranscript('')
+        setAlignment({ ...EMPTY_ALIGNMENT, states: words.map(() => 'idle') })
+        setErrorMessage(message)
+        setStatus('error')
+        return
+      }
+
+      const finalAlignment = alignRecitation(words, finalRecording.transcript, true)
+      setLastRecording(finalRecording)
+      setTranscript(finalRecording.transcript)
+      setAlignment(finalAlignment)
+      setIsSaving(true)
+
+      const savePromise = saveSession({
         mode,
         surahId: chapter.id,
         surahName: chapter.nameSimple,
@@ -332,14 +355,25 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
         mistakes: finalAlignment.mistakes,
         durationSeconds,
         transcript: finalRecording.transcript,
-      }),
-    ]
-    if (mode === 'belajar') tasks.push(requestAnalysis(finalRecording))
-    await Promise.allSettled(tasks)
+      })
+      const analysisPromise =
+        mode === 'belajar' ? requestAnalysis(finalRecording) : Promise.resolve()
 
-    setIsSaving(false)
-    setLearningStep('done')
-    setStatus('done')
+      const [sessionId] = await Promise.all([savePromise, analysisPromise])
+      if (!sessionId) {
+        setErrorMessage('Hasil bacaan selesai diproses, tetapi riwayat belum berhasil disimpan.')
+      }
+
+      setLearningStep('done')
+      setStatus('done')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal menyelesaikan rekaman'
+      setErrorMessage(message)
+      setStatus('error')
+    } finally {
+      setIsSaving(false)
+      stopInFlightRef.current = false
+    }
   }, [ayahEnd, ayahStart, chapter.id, chapter.nameSimple, clearTimer, mode, requestAnalysis, requestTranscription, stopRecording, words])
 
   const effectiveStatus: PracticeStatus = isConnecting ? 'connecting' : isRecording ? 'recording' : status
