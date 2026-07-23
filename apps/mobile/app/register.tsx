@@ -1,6 +1,13 @@
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { AuthScreen } from '@kajianku/ui-mobile'
 
 export default function RegisterPage() {
-  return <AuthScreen mode="register" navigate={(href) => router.replace(href as never)} />
+  const { role } = useLocalSearchParams<{ role?: string }>()
+  return (
+    <AuthScreen
+      initialRole={role === 'asatidz' ? 'asatidz' : 'siswa'}
+      mode="register"
+      navigate={(href) => router.replace(href as never)}
+    />
+  )
 }

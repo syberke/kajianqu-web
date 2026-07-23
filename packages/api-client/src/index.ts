@@ -89,7 +89,11 @@ export async function getSurahVerses(surahNumber: number) {
     number: verse.verse_number,
     arabic: verse.text_uthmani,
     translation: verse.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || '',
-    audioUrl: verse.audio?.url ? `https://verses.quran.com/${verse.audio.url}` : null,
+    audioUrl: verse.audio?.url
+      ? verse.audio.url.startsWith('http')
+        ? verse.audio.url
+        : `https://verses.quran.com/${verse.audio.url.replace(/^\/+/, '')}`
+      : null,
   }))
 }
 
@@ -208,6 +212,13 @@ export type Profile = {
   noWa: string | null
   fotoUrl: string | null
   isActive: boolean
+  birthDate?: string | null
+  gender?: 'male' | 'female' | 'undisclosed' | null
+  addressSummary?: string | null
+  bidang?: string | null
+  bank?: string | null
+  noRekening?: string | null
+  approvalStatus?: string | null
 }
 
 export type ChatRoom = {
@@ -246,6 +257,34 @@ export type Achievement = {
   targetRole: string | null
 }
 
+export type AppNotification = {
+  id: string
+  type: string | null
+  title: string
+  message: string
+  actionUrl: string | null
+  isRead: boolean
+  createdAt: string
+}
+
+export type ClassSession = {
+  id: string
+  classId: string
+  title: string
+  startsAt: string
+  durationMinutes: number
+  meetingUrl: string | null
+  meetingId: string | null
+  passcode: string | null
+}
+
+export type OwnMaterial = MaterialSummary & {
+  workflowStatus: string
+  reviewStatus: string
+  isPublished: boolean
+  createdAt: string
+}
+
 function asNumber(value: unknown): number {
   const result = Number(value)
   return Number.isFinite(result) ? result : 0
@@ -270,7 +309,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     .maybeSingle()
   if (error) throw new Error(error.message)
   if (!data) return null
-  return {
+  const result: Profile = {
     id: String(data.id),
     role: data.role as Profile['role'],
     nama: String(data.nama),
@@ -279,9 +318,46 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     fotoUrl: data.foto_url ? String(data.foto_url) : null,
     isActive: Boolean(data.is_active),
   }
+
+  if (result.role === 'siswa') {
+    const { data: student, error: studentError } = await supabase
+      .from('student_profiles')
+      .select('birth_date, gender, address_summary')
+      .eq('id', result.id)
+      .maybeSingle()
+    if (studentError) throw new Error(studentError.message)
+    result.birthDate = student?.birth_date ? String(student.birth_date) : null
+    result.gender = student?.gender ? student.gender as Profile['gender'] : null
+    result.addressSummary = student?.address_summary ? String(student.address_summary) : null
+  }
+
+  if (result.role === 'asatidz') {
+    const { data: asatidz, error: asatidzError } = await supabase
+      .from('asatidz_profiles')
+      .select('bidang, bank, no_rekening, status')
+      .eq('id', result.id)
+      .maybeSingle()
+    if (asatidzError) throw new Error(asatidzError.message)
+    result.bidang = asatidz?.bidang ? String(asatidz.bidang) : null
+    result.bank = asatidz?.bank ? String(asatidz.bank) : null
+    result.noRekening = asatidz?.no_rekening ? String(asatidz.no_rekening) : null
+    result.approvalStatus = asatidz?.status ? String(asatidz.status) : null
+  }
+
+  return result
 }
 
-export async function updateCurrentProfile(input: { nama: string; noWa?: string; fotoUrl?: string }) {
+export async function updateCurrentProfile(input: {
+  nama: string
+  noWa?: string
+  fotoUrl?: string
+  birthDate?: string
+  gender?: 'male' | 'female' | 'undisclosed'
+  addressSummary?: string
+  bidang?: string
+  bank?: string
+  noRekening?: string
+}) {
   const supabase = requireConfigured()
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw new Error('Silakan masuk untuk memperbarui profil.')
@@ -293,6 +369,43 @@ export async function updateCurrentProfile(input: { nama: string; noWa?: string;
       foto_url: input.fotoUrl?.trim() || null,
     })
     .eq('id', userData.user.id)
+  if (error) throw new Error(error.message)
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userData.user.id)
+    .single()
+  if (profileError) throw new Error(profileError.message)
+
+  if (profile.role === 'siswa') {
+    const { error: studentError } = await supabase
+      .from('student_profiles')
+      .upsert({
+        id: userData.user.id,
+        birth_date: input.birthDate?.trim() || null,
+        gender: input.gender || 'undisclosed',
+        address_summary: input.addressSummary?.trim() || null,
+      })
+    if (studentError) throw new Error(studentError.message)
+  }
+
+  if (profile.role === 'asatidz') {
+    const { error: asatidzError } = await supabase
+      .from('asatidz_profiles')
+      .update({
+        bidang: input.bidang?.trim() || null,
+        bank: input.bank?.trim() || null,
+        no_rekening: input.noRekening?.trim() || null,
+      })
+      .eq('id', userData.user.id)
+    if (asatidzError) throw new Error(asatidzError.message)
+  }
+}
+
+export async function updatePassword(password: string) {
+  if (password.length < 8) throw new Error('Kata sandi baru minimal 8 karakter.')
+  const { error } = await requireConfigured().auth.updateUser({ password })
   if (error) throw new Error(error.message)
 }
 
@@ -384,6 +497,32 @@ export async function ensureClassChat(classId: string): Promise<string> {
   return String(data)
 }
 
+export async function ensureDirectChat(asatidzId: string): Promise<string> {
+  const { data, error } = await requireConfigured().rpc('ensure_direct_chat', { target_asatidz_id: asatidzId })
+  if (error) throw new Error(error.message)
+  return String(data)
+}
+
+export async function listClassSessions(classId: string): Promise<ClassSession[]> {
+  if (!isSupabaseConfigured()) return []
+  const { data, error } = await getSupabase()
+    .from('class_sessions')
+    .select('id, class_id, title, starts_at, duration_minutes, meeting_url, meeting_id, passcode')
+    .eq('class_id', classId)
+    .order('starts_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data || []).map((row) => ({
+    id: String(row.id),
+    classId: String(row.class_id),
+    title: String(row.title),
+    startsAt: String(row.starts_at),
+    durationMinutes: asNumber(row.duration_minutes),
+    meetingUrl: row.meeting_url ? String(row.meeting_url) : null,
+    meetingId: row.meeting_id ? String(row.meeting_id) : null,
+    passcode: row.passcode ? String(row.passcode) : null,
+  }))
+}
+
 export async function listLiveEvents(): Promise<LiveEventSummary[]> {
   if (!isSupabaseConfigured()) return []
   const { data, error } = await getSupabase()
@@ -403,6 +542,121 @@ export async function listLiveEvents(): Promise<LiveEventSummary[]> {
     thumbnailUrl: row.thumbnail_url ? String(row.thumbnail_url) : null,
     status: row.status as LiveEventSummary['status'],
   }))
+}
+
+export async function listOwnLiveEvents(): Promise<LiveEventSummary[]> {
+  const supabase = requireConfigured()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error('Silakan masuk sebagai asatidz.')
+  const { data, error } = await supabase
+    .from('live_events')
+    .select('id, title, description, provider, starts_at, estimated_minutes, event_url, thumbnail_url, status')
+    .eq('asatidz_id', userData.user.id)
+    .order('starts_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data || []).map((row) => ({
+    id: String(row.id),
+    title: String(row.title),
+    description: row.description ? String(row.description) : null,
+    provider: row.provider as LiveEventSummary['provider'],
+    startsAt: String(row.starts_at),
+    estimatedMinutes: row.estimated_minutes === null ? null : asNumber(row.estimated_minutes),
+    eventUrl: String(row.event_url),
+    thumbnailUrl: row.thumbnail_url ? String(row.thumbnail_url) : null,
+    status: row.status as LiveEventSummary['status'],
+  }))
+}
+
+export async function createLiveEvent(input: {
+  title: string
+  description?: string
+  provider: 'youtube' | 'zoom' | 'external'
+  startsAt: string
+  estimatedMinutes?: number
+  eventUrl: string
+}) {
+  const supabase = requireConfigured()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error('Silakan masuk sebagai asatidz.')
+  if (!input.title.trim() || !input.eventUrl.trim() || Number.isNaN(new Date(input.startsAt).getTime())) {
+    throw new Error('Judul, waktu mulai, dan tautan acara wajib diisi dengan benar.')
+  }
+  const { error } = await supabase.from('live_events').insert({
+    asatidz_id: userData.user.id,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    provider: input.provider,
+    starts_at: new Date(input.startsAt).toISOString(),
+    timezone: 'Asia/Jakarta',
+    estimated_minutes: input.estimatedMinutes || 60,
+    event_url: input.eventUrl.trim(),
+    visibility: 'public',
+    status: 'scheduled',
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function listOwnMaterials(): Promise<OwnMaterial[]> {
+  const supabase = requireConfigured()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error('Silakan masuk sebagai asatidz.')
+  const { data, error } = await supabase
+    .from('materials')
+    .select('id, title, slug, summary, description, level, thumbnail_url, youtube_url, published_at, workflow_status, review_status, is_published, created_at')
+    .eq('asatidz_id', userData.user.id)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data || []).map((row) => ({
+    id: String(row.id),
+    title: String(row.title),
+    slug: String(row.slug),
+    summary: row.summary ? String(row.summary) : null,
+    description: row.description ? String(row.description) : null,
+    level: row.level ? String(row.level) : null,
+    thumbnailUrl: row.thumbnail_url ? String(row.thumbnail_url) : null,
+    youtubeUrl: row.youtube_url ? String(row.youtube_url) : null,
+    publishedAt: row.published_at ? String(row.published_at) : null,
+    workflowStatus: String(row.workflow_status || 'DRAFT'),
+    reviewStatus: String(row.review_status || 'pending'),
+    isPublished: Boolean(row.is_published),
+    createdAt: String(row.created_at),
+  }))
+}
+
+export async function createMaterial(input: {
+  title: string
+  summary?: string
+  description?: string
+  level?: string
+  youtubeUrl?: string
+  thumbnailUrl?: string
+}) {
+  const supabase = requireConfigured()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error('Silakan masuk sebagai asatidz.')
+  const title = input.title.trim()
+  if (title.length < 4) throw new Error('Judul materi minimal 4 karakter.')
+  const slugBase = title
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  const { error } = await supabase.from('materials').insert({
+    asatidz_id: userData.user.id,
+    title,
+    slug: `${slugBase}-${Date.now().toString(36)}`,
+    summary: input.summary?.trim() || null,
+    description: input.description?.trim() || null,
+    level: input.level?.trim() || 'Pemula',
+    type: 'video',
+    youtube_url: input.youtubeUrl?.trim() || null,
+    thumbnail_url: input.thumbnailUrl?.trim() || null,
+    workflow_status: 'SUBMITTED',
+    review_status: 'pending',
+    is_published: false,
+  })
+  if (error) throw new Error(error.message)
 }
 
 export async function listDonationPrograms(): Promise<DonationProgram[]> {
@@ -550,6 +804,41 @@ export async function listChatRooms(): Promise<ChatRoom[]> {
     title: String(row.title),
     updatedAt: String(row.updated_at),
   }))
+}
+
+export async function listNotifications(): Promise<AppNotification[]> {
+  if (!isSupabaseConfigured()) return []
+  const supabase = getSupabase()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) return []
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('id, type, title, message, action_url, is_read, created_at')
+    .eq('recipient_id', userData.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(error.message)
+  return (data || []).map((row) => ({
+    id: String(row.id),
+    type: row.type ? String(row.type) : null,
+    title: String(row.title),
+    message: String(row.message),
+    actionUrl: row.action_url ? String(row.action_url) : null,
+    isRead: Boolean(row.is_read),
+    createdAt: String(row.created_at),
+  }))
+}
+
+export async function markNotificationRead(id: string) {
+  const supabase = requireConfigured()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error('Silakan masuk untuk membuka notifikasi.')
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', id)
+    .eq('recipient_id', userData.user.id)
+  if (error) throw new Error(error.message)
 }
 
 export async function listChatMessages(roomId: string): Promise<ChatMessage[]> {

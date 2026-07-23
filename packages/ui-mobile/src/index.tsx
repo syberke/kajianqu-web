@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -41,12 +42,14 @@ import {
   AudioModule,
   RecordingPresets,
   setAudioModeAsync,
+  useAudioPlayer,
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio'
 import { useQuery } from '@tanstack/react-query'
 import {
   getSupabase,
+  getCurrentProfile,
   getSurahVerses,
   isSupabaseConfigured,
   listLiveEvents,
@@ -179,10 +182,11 @@ const featureItems = [
 ]
 
 export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate: Navigate }) {
+  const profile = useQuery({ queryKey: ['current-profile'], queryFn: getCurrentProfile })
   const materials = useQuery({ queryKey: ['home-materials'], queryFn: () => listPublishedMaterials(3) })
   const live = useQuery({ queryKey: ['home-live'], queryFn: listLiveEvents })
   const nextLive = live.data?.find((item) => item.status === 'live') || live.data?.[0]
-  const displayName = role === 'asatidz' ? 'Ust. Adi Hidayat' : role === 'admin' ? 'Admin KajianQu' : 'Sahabat KajianQu'
+  const displayName = profile.data?.nama || (role === 'admin' ? 'Admin KajianQu' : 'Sahabat KajianQu')
   return (
     <AppScreen padded={false}>
       <View style={styles.prayerHero}>
@@ -288,9 +292,13 @@ export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate
         {materials.data?.map((item) => (
           <SurfaceCard key={item.id} onPress={() => navigate(`/materi/${item.slug || item.id}`)} style={styles.materialRowCard}>
             <View style={styles.rowGap}>
-              <View style={styles.videoThumb}>
-                <Play color={colors.white} fill={colors.white} size={19} />
-              </View>
+              {item.thumbnailUrl ? (
+                <Image resizeMode="cover" source={{ uri: item.thumbnailUrl }} style={styles.videoThumbImage} />
+              ) : (
+                <View style={styles.videoThumb}>
+                  <Play color={colors.white} fill={colors.white} size={19} />
+                </View>
+              )}
               <View style={styles.flex}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text numberOfLines={2} style={styles.muted}>{item.summary || item.description || 'Materi KajianQu'}</Text>
@@ -360,6 +368,23 @@ export function QuranLibraryScreen({ navigate }: { navigate: Navigate }) {
   )
 }
 
+function VerseAudioButton({ uri }: { uri: string }) {
+  const player = useAudioPlayer(uri)
+  return (
+    <Pressable
+      accessibilityLabel="Putar audio ayat"
+      onPress={() => {
+        void player.seekTo(0)
+        player.play()
+      }}
+      style={({ pressed }) => [styles.verseAudioButton, pressed && styles.buttonPressed]}
+    >
+      <Play color={colors.primary} fill={colors.primary} size={16} />
+      <Text style={styles.verseAudioText}>Dengarkan</Text>
+    </Pressable>
+  )
+}
+
 export function QuranReaderScreen({ surahNumber, navigate }: { surahNumber: number; navigate: Navigate }) {
   const query = useQuery({
     queryKey: ['surah-verses', surahNumber],
@@ -382,7 +407,10 @@ export function QuranReaderScreen({ surahNumber, navigate }: { surahNumber: numb
         ) : null}
         {query.data?.map((verse) => (
           <View key={verse.id} style={styles.verseCard}>
-            <View style={styles.verseNumber}><Text style={styles.verseNumberText}>{verse.number}</Text></View>
+            <View style={styles.readerVerseTop}>
+              <View style={styles.verseNumber}><Text style={styles.verseNumberText}>{verse.number}</Text></View>
+              {verse.audioUrl ? <VerseAudioButton uri={verse.audioUrl} /> : null}
+            </View>
             <Text selectable style={styles.arabicVerse}>{verse.arabic}</Text>
             <Text style={styles.translation}>{verse.translation}</Text>
           </View>
@@ -650,10 +678,20 @@ function LabeledInput({ label, value, onChangeText }: { label: string; value: st
   )
 }
 
-export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'register'; navigate: Navigate }) {
+export function AuthScreen({
+  mode = 'login',
+  initialRole = 'siswa',
+  navigate,
+}: {
+  mode?: 'login' | 'register'
+  initialRole?: Extract<Role, 'siswa' | 'asatidz'>
+  navigate: Navigate
+}) {
+  const [name, setName] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Role>('siswa')
+  const [role, setRole] = useState<Role>(initialRole)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -662,6 +700,10 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
     const parsed = authSchema.safeParse({ email, password })
     if (!parsed.success) {
       setMessage(parsed.error.issues[0]?.message || 'Periksa data Anda.')
+      return
+    }
+    if (mode === 'register' && name.trim().length < 3) {
+      setMessage('Nama lengkap minimal 3 karakter.')
       return
     }
     if (!isSupabaseConfigured()) {
@@ -676,7 +718,7 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
           ? await supabase.auth.signInWithPassword(parsed.data)
           : await supabase.auth.signUp({
               ...parsed.data,
-              options: { data: { role, nama: email.split('@')[0] } },
+              options: { data: { role, nama: name.trim(), no_wa: whatsapp.trim() || null } },
             })
       if (response.error) throw response.error
       setMessage(mode === 'login' ? 'Berhasil masuk.' : 'Pendaftaran berhasil. Periksa email untuk verifikasi.')
@@ -702,13 +744,35 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
           <Text style={styles.authTitle}>{mode === 'login' ? 'Masuk ke Akun' : 'Buat Akun Baru'}</Text>
           <Text style={styles.authSubtitle}>{mode === 'login' ? 'Lanjutkan perjalanan belajar bersama KajianQu' : 'Pilih peran dan lengkapi data dasar'}</Text>
           {mode === 'register' ? (
-            <View style={styles.roleSelector}>
-              {(['siswa', 'asatidz'] as Role[]).map((item) => (
-                <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleOption, role === item && styles.roleOptionActive]}>
-                  <Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item === 'siswa' ? 'Siswa' : 'Asatidz'}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <>
+              <View style={styles.roleSelector}>
+                {(['siswa', 'asatidz'] as Role[]).map((item) => (
+                  <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleOption, role === item && styles.roleOptionActive]}>
+                    <Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item === 'siswa' ? 'Santri' : 'Asatidz'}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.inputLabel}>Nama Lengkap</Text>
+              <TextInput
+                autoCapitalize="words"
+                autoComplete="name"
+                onChangeText={setName}
+                placeholder="Nama sesuai identitas"
+                placeholderTextColor="#93A09A"
+                style={styles.textField}
+                value={name}
+              />
+              <Text style={styles.inputLabel}>Nomor WhatsApp</Text>
+              <TextInput
+                autoComplete="tel"
+                keyboardType="phone-pad"
+                onChangeText={setWhatsapp}
+                placeholder="08xxxxxxxxxx"
+                placeholderTextColor="#93A09A"
+                style={styles.textField}
+                value={whatsapp}
+              />
+            </>
           ) : null}
           <Text style={styles.inputLabel}>Alamat Email</Text>
           <TextInput
@@ -723,7 +787,11 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
           />
           <View style={styles.passwordLabelRow}>
             <Text style={styles.inputLabel}>Kata Sandi</Text>
-            {mode === 'login' ? <Text style={styles.forgotPassword}>Lupa kata sandi?</Text> : null}
+            {mode === 'login' ? (
+              <Pressable onPress={() => navigate('/forgot-password')}>
+                <Text style={styles.forgotPassword}>Lupa kata sandi?</Text>
+              </Pressable>
+            ) : null}
           </View>
           <TextInput
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -761,10 +829,10 @@ const roleModules: Record<Role, Array<{ title: string; subtitle: string; icon: t
     { title: 'Moderasi', subtitle: 'Pantau ruang diskusi yang dapat dibaca publik', icon: MessageCircle, href: '/bahtsul-masail' },
   ],
   asatidz: [
-    { title: 'Materi', subtitle: 'Buka katalog materi yang sudah dipublikasikan', icon: Library, href: '/materi' },
+    { title: 'Kelola materi', subtitle: 'Upload materi dan pantau status review admin', icon: Library, href: '/asatidz/materials' },
     { title: 'Kelas private', subtitle: 'Lihat jadwal dan status pendaftaran kelas', icon: GraduationCap, href: '/kelas' },
     { title: 'Chat siswa', subtitle: 'Buka pesan langsung dan grup kelas Anda', icon: MessageCircle, href: '/chat' },
-    { title: 'Jadwal live', subtitle: 'Buka acara live KajianQu yang tersedia', icon: Video, href: '/live' },
+    { title: 'Buat jadwal live', subtitle: 'Atur jadwal dan tautan siaran kajian', icon: Video, href: '/asatidz/live/new' },
   ],
   siswa: [
     { title: 'Materi belajar', subtitle: 'Pilih materi yang telah disetujui', icon: GraduationCap, href: '/materi' },
@@ -922,6 +990,7 @@ const styles = StyleSheet.create({
   progressTrack: { height: 7, backgroundColor: colors.surfaceMuted, borderRadius: radius.pill, overflow: 'hidden', marginTop: spacing.md },
   progressFill: { height: '100%', backgroundColor: colors.primary },
   videoThumb: { width: 88, height: 60, borderRadius: 8, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  videoThumbImage: { width: 88, height: 60, borderRadius: 8, backgroundColor: colors.surfaceMuted },
   searchField: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, minHeight: 50 },
   searchInput: { flex: 1, color: colors.text, fontSize: 15, outlineStyle: 'none' } as object,
   segment: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.md, padding: 4 },
@@ -939,6 +1008,9 @@ const styles = StyleSheet.create({
   readerSubtitle: { color: '#DDF3EA', marginTop: 4 },
   verseCard: { paddingVertical: spacing.xl, borderBottomWidth: 1, borderBottomColor: colors.border },
   verseNumber: { width: 34, height: 34, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  readerVerseTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  verseAudioButton: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  verseAudioText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   verseNumberText: { color: colors.primary, fontWeight: '800' },
   arabicVerse: { color: colors.text, fontSize: 30, lineHeight: 54, textAlign: 'right', writingDirection: 'rtl' },
   translation: { color: colors.textMuted, fontSize: 14, lineHeight: 23, marginTop: spacing.md },
@@ -1010,3 +1082,4 @@ const styles = StyleSheet.create({
 })
 
 export * from './features'
+export * from './figma-screens'
