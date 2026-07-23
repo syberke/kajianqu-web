@@ -3,41 +3,55 @@ import type { QuranSession, SessionHistory } from '@/types/quran'
 export async function saveSession(
   session: Omit<QuranSession, 'id' | 'createdAt' | 'userId'>,
 ): Promise<string | null> {
-  try {
-    const response = await fetch('/api/quran/sessions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(session),
-    })
+  const requestId = crypto.randomUUID()
 
-    const rawPayload = await response.text()
-    let payload: { id?: string; error?: string } = {}
-    if (rawPayload) {
-      try {
-        payload = JSON.parse(rawPayload) as { id?: string; error?: string }
-      } catch {
-        payload = {}
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch('/api/quran/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ ...session, requestId }),
+      })
+
+      const rawPayload = await response.text()
+      let payload: { id?: string; error?: string } = {}
+      if (rawPayload) {
+        try {
+          payload = JSON.parse(rawPayload) as { id?: string; error?: string }
+        } catch {
+          payload = {}
+        }
       }
-    }
 
-    if (!response.ok) {
+      if (response.ok && payload.id) return payload.id
+
+      const retryable = response.status === 503 && attempt === 0
+      if (retryable) {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        continue
+      }
+
       console.error('Error saving Quran session', {
         status: response.status,
         error: payload.error || rawPayload || 'Respons server kosong',
       })
       return null
-    }
+    } catch (error) {
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        continue
+      }
 
-    return payload.id ?? null
-  } catch (error) {
-    console.error('Error saving Quran session', {
-      error: error instanceof Error ? error.message : 'Gagal terhubung ke server',
-    })
-    return null
+      console.error('Error saving Quran session', {
+        error: error instanceof Error ? error.message : 'Gagal terhubung ke server',
+      })
+    }
   }
+
+  return null
 }
 
 export async function getSessionHistory(limit = 20): Promise<SessionHistory[]> {

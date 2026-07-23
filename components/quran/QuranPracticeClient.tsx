@@ -238,7 +238,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
     }, 1_000)
   }, [hasListened, mode, resetRecitation, startRecording])
 
-  const requestAnalysis = useCallback(async (recording: RecitationRecordingResult) => {
+  const requestAnalysis = useCallback(async (recording: RecitationRecordingResult, deterministicAlignment?: AlignmentResult) => {
     if (!recording.audioBlob) {
       setAnalysisError('Browser tidak menghasilkan rekaman audio utuh untuk analisis tajwid.')
       return
@@ -255,6 +255,8 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
       formData.append('surahName', chapter.nameSimple)
       formData.append('ayahStart', String(ayahStart))
       formData.append('ayahEnd', String(ayahEnd))
+      formData.append('alignmentAccuracy', String(deterministicAlignment?.accuracy ?? 0))
+      formData.append('alignmentMistakes', JSON.stringify(deterministicAlignment?.mistakes ?? []))
 
       const response = await fetch('/api/quran/recitation-analysis', { method: 'POST', body: formData })
       const payload = (await response.json().catch(() => null)) as {
@@ -276,7 +278,6 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
     const extension = recording.mimeType.includes('ogg') ? 'ogg' : 'webm'
     const formData = new FormData()
     formData.append('audio', recording.audioBlob, `quran-recitation.${extension}`)
-    formData.append('expectedText', expectedText)
 
     const response = await fetch('/api/quran/recitation-transcription', {
       method: 'POST',
@@ -290,7 +291,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
       throw new Error(payload?.error ?? 'Transkripsi rekaman gagal')
     }
     return payload.transcript
-  }, [expectedText])
+  }, [])
 
   const stop = useCallback(async () => {
     if (stopInFlightRef.current) return
@@ -311,15 +312,19 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
       let finalRecording = recording
       let transcriptionError = ''
 
-      if (!recording.transcript.trim() && recording.audioBlob) {
+      if (recording.audioBlob) {
         setIsAnalyzing(true)
         setAnalysisError('')
         try {
-          const fallbackTranscript = await requestTranscription(recording)
-          finalRecording = { ...recording, transcript: fallbackTranscript }
+          const fullRecordingTranscript = await requestTranscription(recording)
+          finalRecording = { ...recording, transcript: fullRecordingTranscript }
         } catch (error) {
           transcriptionError = error instanceof Error ? error.message : 'Transkripsi rekaman gagal'
-          setAnalysisError(transcriptionError)
+          if (recording.transcript.trim()) {
+            setErrorMessage('Transkripsi rekaman penuh gagal. Hasil sementara Gemini Live digunakan.')
+          } else {
+            setAnalysisError(transcriptionError)
+          }
         } finally {
           setIsAnalyzing(false)
         }
@@ -356,8 +361,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
         durationSeconds,
         transcript: finalRecording.transcript,
       })
-      const analysisPromise =
-        mode === 'belajar' ? requestAnalysis(finalRecording) : Promise.resolve()
+      const analysisPromise = requestAnalysis(finalRecording, finalAlignment)
 
       const [sessionId] = await Promise.all([savePromise, analysisPromise])
       if (!sessionId) {
@@ -506,7 +510,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
                 <p className="text-sm font-semibold text-slate-500">Kecocokan lafaz & urutan</p>
                 <div className="mt-2 flex items-end gap-2"><span className="text-4xl font-black text-slate-900">{accuracy}%</span><span className="pb-1 text-sm text-slate-500">{alignment.correctWords}/{words.length} kata benar</span></div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#1a7a53]" style={{ width: `${Math.min(100, accuracy)}%` }} /></div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm"><div className="rounded-xl bg-red-50 p-3"><p className="font-black text-red-700">{alignment.mistakes.filter((item) => item.kind === 'substitution').length}</p><p className="text-red-600">Berbeda</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="font-black text-amber-700">{alignment.mistakes.filter((item) => item.kind === 'omission').length}</p><p className="text-amber-600">Terlewat</p></div></div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm"><div className="rounded-xl bg-red-50 p-3"><p className="font-black text-red-700">{alignment.mistakes.filter((item) => item.kind === 'substitution').length}</p><p className="text-red-600">Berbeda</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="font-black text-amber-700">{alignment.mistakes.filter((item) => item.kind === 'omission').length}</p><p className="text-amber-600">Terlewat</p></div><div className="rounded-xl bg-blue-50 p-3"><p className="font-black text-blue-700">{alignment.mistakes.filter((item) => item.kind === 'insertion').length}</p><p className="text-blue-600">Tambahan</p></div></div>
               </section>
             )}
 
@@ -518,10 +522,73 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
           </aside>
         </div>
 
-        {mode === 'belajar' && (isDone || isAnalyzing) && (
+        {isDone && (
+          <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Rincian Pencocokan Lafaz</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-900">Kata yang berbeda, terlewat, atau tambahan</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">Bagian ini dihitung langsung dari urutan transkrip rekaman penuh. Analisis audio di bawahnya melengkapi temuan untuk kata yang terpotong, makhraj, dan tajwid.</p>
+            </div>
+
+            {accuracy < 20 && (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-relaxed text-red-800">
+                Bacaan yang terdeteksi sangat berbeda dari target. Periksa apakah surat atau rentang ayat yang dibaca sudah benar.
+              </div>
+            )}
+
+            {alignment.mistakes.length === 0 ? (
+              <div className="mt-5 rounded-2xl bg-emerald-50 p-5 text-sm font-semibold text-emerald-800">Tidak ditemukan kata yang berbeda, terlewat, atau tambahan pada transkrip.</div>
+            ) : (
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {alignment.mistakes.slice(0, 80).map((mistake, index) => {
+                  const label =
+                    mistake.kind === 'omission'
+                      ? 'Terlewat'
+                      : mistake.kind === 'insertion'
+                        ? 'Tambahan / bacaan lain'
+                        : 'Berbeda'
+                  const color =
+                    mistake.kind === 'omission'
+                      ? 'bg-amber-50 text-amber-800'
+                      : mistake.kind === 'insertion'
+                        ? 'bg-blue-50 text-blue-800'
+                        : 'bg-red-50 text-red-800'
+
+                  return (
+                    <article key={`${mistake.ayahNumber}-${mistake.wordIndex}-${mistake.kind}-${index}`} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${color}`}>{label}</span>
+                        <span className="text-xs font-semibold text-slate-400">Ayat {mistake.ayahNumber}, kata {mistake.wordIndex}</span>
+                      </div>
+                      {mistake.wordArabic && (
+                        <div className="mt-4">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Seharusnya</p>
+                          <p className="mt-1 text-right font-serif text-2xl text-slate-900" dir="rtl">{mistake.wordArabic}</p>
+                        </div>
+                      )}
+                      <div className="mt-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Terdeteksi</p>
+                        <p className="mt-1 text-right font-serif text-xl text-slate-700" dir="rtl">{mistake.wordSpoken || 'Tidak terdengar'}</p>
+                      </div>
+                      {mistake.kind === 'substitution' && typeof mistake.confidence === 'number' && (
+                        <p className="mt-3 text-xs text-slate-500">Kemiripan teks: {Math.round(mistake.confidence * 100)}%</p>
+                      )}
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+
+            {alignment.mistakes.length > 80 && (
+              <p className="mt-4 text-sm text-slate-500">Menampilkan 80 dari {alignment.mistakes.length} perbedaan. Pilih rentang ayat yang lebih pendek untuk rincian lengkap.</p>
+            )}
+          </section>
+        )}
+
+        {(isDone || isAnalyzing) && (
           <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Analisis Audio AI</p><h2 className="mt-2 text-2xl font-black text-slate-900">Makhraj, tajwid, dan hukum bacaan</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">Analisis ini membaca sinyal audio dan memberi indikasi latihan. Hasilnya bukan penilaian talaqqi final dan tetap perlu diverifikasi bersama guru atau ustadz.</p></div>
+              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Analisis Audio AI</p><h2 className="mt-2 text-2xl font-black text-slate-900">Lafaz, kata terpotong, makhraj, dan tajwid</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">Rekaman penuh diperiksa untuk menemukan kata yang berhenti di tengah, bagian yang dilompati, bacaan dari surat lain, serta indikasi makhraj dan tajwid. Hasil AI tetap perlu diverifikasi bersama guru atau ustadz.</p></div>
               {analysis && <span className="rounded-2xl bg-[#145c42] px-5 py-3 text-xl font-black text-white">{Math.round(analysis.overallScore)}/100</span>}
             </div>
 
@@ -557,7 +624,7 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
               <div className="mt-6 rounded-2xl bg-red-50 p-5 text-sm text-red-700">
                 <p>{analysisError || 'Analisis audio belum tersedia.'}</p>
                 {lastRecording?.audioBlob && (
-                  <button type="button" onClick={() => void requestAnalysis(lastRecording)} className="mt-3 font-black underline">Coba analisis ulang</button>
+                  <button type="button" onClick={() => void requestAnalysis(lastRecording, alignment)} className="mt-3 font-black underline">Coba analisis ulang</button>
                 )}
               </div>
             )}

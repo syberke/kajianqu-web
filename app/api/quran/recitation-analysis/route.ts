@@ -2,9 +2,9 @@ import { GoogleGenAI, Type } from '@google/genai'
 import { NextResponse } from 'next/server'
 
 import { DEFAULT_GEMINI_ANALYSIS_MODEL } from '@/lib/gemini-live-config'
-import { createClient } from '@/lib/supabase/server'
-import type { QuranRecitationAnalysis } from '@/types/quran'
 import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
+import { createClient } from '@/lib/supabase/server'
+import type { QuranRecitationAnalysis, SessionMistake } from '@/types/quran'
 
 const MAX_AUDIO_BYTES = 18 * 1024 * 1024
 
@@ -82,6 +82,39 @@ function isAnalysis(value: unknown): value is QuranRecitationAnalysis {
   )
 }
 
+function normalizeAudioMimeType(mimeType: string): string {
+  const normalized = mimeType.toLowerCase()
+  if (normalized.includes('ogg')) return 'audio/ogg'
+  if (normalized.includes('wav')) return 'audio/wav'
+  if (normalized.includes('mpeg') || normalized.includes('mp3')) return 'audio/mpeg'
+  if (normalized.includes('mp4') || normalized.includes('m4a')) return 'audio/mp4'
+  return 'audio/webm'
+}
+
+function parseAlignmentMistakes(rawValue: string): SessionMistake[] {
+  if (!rawValue) return []
+
+  try {
+    const value = JSON.parse(rawValue) as unknown
+    if (!Array.isArray(value)) return []
+
+    return value
+      .filter((item): item is SessionMistake => {
+        if (!item || typeof item !== 'object') return false
+        const mistake = item as Partial<SessionMistake>
+        return (
+          typeof mistake.wordArabic === 'string' &&
+          typeof mistake.wordSpoken === 'string' &&
+          typeof mistake.ayahNumber === 'number' &&
+          typeof mistake.wordIndex === 'number'
+        )
+      })
+      .slice(0, 200)
+  } catch {
+    return []
+  }
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -90,8 +123,13 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rate = checkRateLimit(`recitation:${requestIdentity(request, user.id)}`, 12, 60 * 60 * 1_000)
-  if (!rate.allowed) return NextResponse.json({ error: 'Batas analisis bacaan sementara tercapai.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } })
+  const rate = checkRateLimit(`recitation:${requestIdentity(request, user.id)}`, 30, 60 * 60 * 1_000)
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: 'Batas analisis bacaan sementara tercapai.' },
+      { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
+    )
+  }
 
   const formData = await request.formData().catch(() => null)
   if (!formData) return NextResponse.json({ error: 'Form audio tidak valid' }, { status: 400 })
@@ -102,6 +140,10 @@ export async function POST(request: Request) {
   const surahName = String(formData.get('surahName') ?? '').trim()
   const ayahStart = Number(formData.get('ayahStart'))
   const ayahEnd = Number(formData.get('ayahEnd'))
+  const alignmentAccuracy = Number(formData.get('alignmentAccuracy'))
+  const alignmentMistakes = parseAlignmentMistakes(
+    String(formData.get('alignmentMistakes') ?? ''),
+  )
 
   if (!(audio instanceof File) || audio.size === 0 || !audio.type.startsWith('audio/')) {
     return NextResponse.json({ error: 'Rekaman audio wajib dikirim' }, { status: 400 })
@@ -133,27 +175,33 @@ export async function POST(request: Request) {
             {
               text: `Analisis rekaman bacaan Al-Qur'an ini sebagai pendamping latihan audio, bukan keputusan talaqqi final.
 
-Konteks: Surah ${surahName}, ayat ${ayahStart}-${ayahEnd}.
-Teks Qur'an canonical yang diharapkan:
+Target latihan: Surah ${surahName}, ayat ${ayahStart}-${ayahEnd}.
+Teks target untuk dibandingkan, bukan untuk menebak suara:
 ${expectedText}
 
-Transkrip otomatis Gemini Live sebagai referensi sekunder:
+Transkrip literal dari rekaman penuh:
 ${transcript || '(transkrip kosong)'}
 
-Dengarkan audio dengan teliti. Nilai hanya hal yang benar-benar terdengar. Fokus pada:
-1. indikasi makhraj atau artikulasi huruf,
-2. tajwid dan hukum bacaan yang terdengar,
-3. panjang-pendek mad,
-4. ghunnah,
-5. qalqalah,
-6. waqaf dan ibtida,
-7. lafaz yang jelas berubah atau terlewat.
+Hasil pencocokan kata deterministik:
+- Akurasi: ${Number.isFinite(alignmentAccuracy) ? alignmentAccuracy.toFixed(2) : 'tidak tersedia'}%
+- Perbedaan: ${JSON.stringify(alignmentMistakes)}
 
-Gunakan bahasa Indonesia yang konkret dan edukatif. Untuk hal akustik yang tidak pasti, pakai kata seperti "terdengar" atau "terindikasi" dan jangan mengarang kesalahan. Skor 0-100 hanya skor latihan AI. Berikan issue spesifik bila memang terdengar dan saran perbaikannya.`,
+Aturan penilaian wajib:
+1. Nilai hanya suara yang benar-benar terdengar. Jangan menganggap teks target dibaca hanya karena tersedia di prompt.
+2. Tandai kata yang hanya dibaca sebagian, awal atau akhirnya terpotong, atau artikulasinya berhenti di tengah kata.
+3. Tandai jeda panjang yang menyebabkan kata atau rangkaian kata terlewat, termasuk ketika pembaca langsung melompat ke bagian akhir.
+4. Jika bacaan berasal dari surat atau rentang ayat lain, jelaskan bahwa lafaz berbeda dari target. Jangan mengubahnya agar cocok dengan target.
+5. Gunakan hasil pencocokan deterministik sebagai bukti kata terlewat, berbeda, atau tambahan. Jangan menaikkan skor jika banyak kata hilang.
+6. Bedakan kesalahan lafaz dari makhraj, tajwid, mad, ghunnah, qalqalah, serta waqaf dan ibtida.
+7. Untuk setiap masalah yang jelas, tuliskan kata atau bagian terkait, apa yang terdengar, mengapa berbeda, dan latihan perbaikannya.
+8. Jika aspek akustik tidak pasti, gunakan kata "terindikasi" dan jangan mengarang kesalahan.
+9. Skor 0-100 hanya skor latihan AI. Bacaan dengan kata terlewat atau surat yang berbeda tidak boleh mendapat skor tinggi.
+
+Gunakan bahasa Indonesia yang konkret, rinci, dan mudah dipraktikkan.`,
             },
             {
               inlineData: {
-                mimeType: audio.type || 'audio/webm',
+                mimeType: normalizeAudioMimeType(audio.type),
                 data: audioData,
               },
             },
@@ -163,7 +211,7 @@ Gunakan bahasa Indonesia yang konkret dan edukatif. Untuk hal akustik yang tidak
       config: {
         responseMimeType: 'application/json',
         responseSchema: RECITATION_SCHEMA,
-        temperature: 0.1,
+        temperature: 0,
       },
     })
 
