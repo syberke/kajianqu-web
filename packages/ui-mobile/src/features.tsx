@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -33,6 +34,7 @@ import {
   Quote,
   Search,
   Send,
+  ShieldCheck,
   Sparkles,
   Users,
   Video,
@@ -41,6 +43,7 @@ import {
 import {
   createDonationTransaction,
   ensureClassChat,
+  ensureDirectChat,
   getCurrentProfile,
   joinPrivateClass,
   listAchievements,
@@ -51,15 +54,16 @@ import {
   listDiscussionTopics,
   listDonationPrograms,
   listLiveEvents,
+  listNotifications,
   listPrivateClasses,
   listPublicAsatidz,
   listPublishedMaterials,
   listQuranHistory,
   listQuotes,
+  markNotificationRead,
   sendChatMessage,
   signOut,
   subscribeToChatRoom,
-  updateCurrentProfile,
 } from '@kajianku/api-client'
 import { colors, radius, shadow, spacing } from '@kajianku/design-tokens'
 
@@ -234,9 +238,13 @@ export function MaterialCatalogScreen({ navigate }: { navigate: FeatureNavigate 
       <View style={featureStyles.grid}>
         {items.map((item) => (
           <Card key={item.id} style={{ width: itemWidth }}>
-            <View style={featureStyles.mediaPlaceholder}>
-              <Play color={colors.white} fill={colors.white} size={26} />
-            </View>
+            {item.thumbnailUrl ? (
+              <Image resizeMode="cover" source={{ uri: item.thumbnailUrl }} style={featureStyles.mediaImage} />
+            ) : (
+              <View style={featureStyles.mediaPlaceholder}>
+                <Play color={colors.white} fill={colors.white} size={26} />
+              </View>
+            )}
             <View style={featureStyles.badge}><Text style={featureStyles.badgeText}>{item.level || 'Umum'}</Text></View>
             <Text style={featureStyles.cardTitle}>{item.title}</Text>
             <Text numberOfLines={3} style={featureStyles.muted}>{item.summary || item.description || 'Materi kajian terverifikasi.'}</Text>
@@ -292,7 +300,11 @@ export function AsatidzDirectoryScreen({ navigate }: { navigate: FeatureNavigate
       <View style={featureStyles.grid}>
         {items.map((item) => (
           <Card key={item.id} style={{ width: itemWidth }}>
-            <View style={featureStyles.avatar}><Text style={featureStyles.avatarText}>{item.nama.slice(0, 2).toUpperCase()}</Text></View>
+            {item.fotoUrl ? (
+              <Image accessibilityLabel={`Foto ${item.nama}`} source={{ uri: item.fotoUrl }} style={featureStyles.avatarImage} />
+            ) : (
+              <View style={featureStyles.avatar}><Text style={featureStyles.avatarText}>{item.nama.slice(0, 2).toUpperCase()}</Text></View>
+            )}
             <View style={featureStyles.verifiedRow}>
               <CheckCircle2 color={colors.primary} size={17} />
               <Text style={featureStyles.verifiedText}>Asatidz terverifikasi</Text>
@@ -316,13 +328,33 @@ export function AsatidzDetailScreen({ id, navigate }: { id: string; navigate: Fe
   const classQuery = useQuery({ queryKey: ['private-classes'], queryFn: listPrivateClasses })
   const profile = profileQuery.data?.find((item) => item.id === id)
   const classes = (classQuery.data || []).filter((item) => item.asatidzId === id)
+  const [chatBusy, setChatBusy] = useState(false)
+  const [chatMessage, setChatMessage] = useState<string | null>(null)
+
+  async function openDirectChat() {
+    setChatBusy(true)
+    setChatMessage(null)
+    try {
+      const roomId = await ensureDirectChat(id)
+      navigate(`/chat/${roomId}`)
+    } catch (caught) {
+      setChatMessage(caught instanceof Error ? caught.message : 'Chat dengan asatidz belum dapat dibuka.')
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
   return (
     <Page title="Profil Asatidz" subtitle="Informasi publik dan kelas yang sedang tersedia" icon={<Users color={colors.gold} size={28} />}>
       <QueryState loading={profileQuery.isLoading} error={profileQuery.error} empty={!profileQuery.isLoading && !profile} onRetry={() => void profileQuery.refetch()} />
       {profile ? (
         <Card>
           <View style={featureStyles.profileHeader}>
-            <View style={featureStyles.avatar}><Text style={featureStyles.avatarText}>{profile.nama.slice(0, 2).toUpperCase()}</Text></View>
+            {profile.fotoUrl ? (
+              <Image accessibilityLabel={`Foto ${profile.nama}`} source={{ uri: profile.fotoUrl }} style={featureStyles.avatarImage} />
+            ) : (
+              <View style={featureStyles.avatar}><Text style={featureStyles.avatarText}>{profile.nama.slice(0, 2).toUpperCase()}</Text></View>
+            )}
             <View style={featureStyles.flex}>
               <View style={featureStyles.verifiedRow}>
                 <CheckCircle2 color={colors.primary} size={17} />
@@ -339,6 +371,13 @@ export function AsatidzDetailScreen({ id, navigate }: { id: string; navigate: Fe
           {profile.memorizationJuz ? (
             <View style={featureStyles.metaRow}><BookMarked color={colors.primary} size={17} /><Text style={featureStyles.muted}>Hafalan {profile.memorizationJuz} juz</Text></View>
           ) : null}
+          {chatMessage ? <Text style={featureStyles.formMessage}>{chatMessage}</Text> : null}
+          <ActionButton
+            label={chatBusy ? 'Membuka chat...' : 'Mulai chat dengan asatidz'}
+            disabled={chatBusy}
+            onPress={() => void openDirectChat()}
+            icon={<MessageCircle color={colors.white} size={18} />}
+          />
         </Card>
       ) : null}
       {profile ? <SectionHeading title="Kelas tersedia" subtitle="Pendaftaran dan chat mengikuti status keanggotaan kelas" /> : null}
@@ -348,7 +387,7 @@ export function AsatidzDetailScreen({ id, navigate }: { id: string; navigate: Fe
           <Text style={featureStyles.cardTitle}>{item.title}</Text>
           <Text style={featureStyles.muted}>{item.description || 'Kelas bersama asatidz KajianQu.'}</Text>
           <View style={featureStyles.metaRow}><CalendarDays color={colors.primary} size={16} /><Text style={featureStyles.muted}>{formatDate(item.startsAt)}</Text></View>
-          <ActionButton label="Lihat semua kelas" onPress={() => navigate('/kelas')} tone="soft" />
+          <ActionButton label="Lihat detail kelas" onPress={() => navigate(`/kelas/${item.id}`)} tone="soft" />
         </Card>
       ))}
     </Page>
@@ -409,6 +448,7 @@ export function PrivateClassesScreen({ navigate }: { navigate: FeatureNavigate }
             </View>
             <View style={featureStyles.buttonRow}>
               <ActionButton label={busyId === item.id ? 'Memproses...' : 'Daftar'} disabled={busyId === item.id} onPress={() => void join(item.id)} />
+              <ActionButton label="Detail kelas" disabled={busyId === item.id} onPress={() => navigate(`/kelas/${item.id}`)} tone="soft" />
               <ActionButton label="Chat kelas" disabled={busyId === item.id} onPress={() => void openChat(item.id)} tone="soft" />
             </View>
           </Card>
@@ -425,6 +465,7 @@ export function LiveEventsScreen() {
       <QueryState loading={query.isLoading} error={query.error} empty={!query.isLoading && !query.data?.length} onRetry={() => void query.refetch()} />
       {(query.data || []).map((item) => (
         <Card key={item.id}>
+          {item.thumbnailUrl ? <Image resizeMode="cover" source={{ uri: item.thumbnailUrl }} style={featureStyles.liveImage} /> : null}
           <View style={featureStyles.liveRow}>
             <View style={[featureStyles.liveStatus, item.status === 'live' && featureStyles.liveStatusActive]}>
               <Text style={featureStyles.liveStatusText}>{item.status === 'live' ? 'LIVE' : 'TERJADWAL'}</Text>
@@ -679,17 +720,6 @@ export function ChatRoomScreen({ roomId }: { roomId: string }) {
 export function ProfileScreen({ navigate }: { navigate: FeatureNavigate }) {
   const queryClient = useQueryClient()
   const profile = useQuery({ queryKey: ['current-profile'], queryFn: getCurrentProfile })
-  const [name, setName] = useState('')
-  const [whatsapp, setWhatsapp] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (profile.data) {
-      setName(profile.data.nama)
-      setWhatsapp(profile.data.noWa || '')
-    }
-  }, [profile.data])
 
   if (!profile.isLoading && !profile.data) {
     return (
@@ -703,20 +733,6 @@ export function ProfileScreen({ navigate }: { navigate: FeatureNavigate }) {
     )
   }
 
-  async function save() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      await updateCurrentProfile({ nama: name, noWa: whatsapp })
-      await queryClient.invalidateQueries({ queryKey: ['current-profile'] })
-      setMessage('Profil berhasil diperbarui.')
-    } catch (caught) {
-      setMessage(caught instanceof Error ? caught.message : 'Profil belum tersimpan.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function logout() {
     await signOut()
     await queryClient.invalidateQueries()
@@ -724,31 +740,45 @@ export function ProfileScreen({ navigate }: { navigate: FeatureNavigate }) {
   }
 
   return (
-    <Page title="Profil" subtitle="Data pribadi tidak ditampilkan pada profil publik" icon={<Users color={colors.gold} size={28} />}>
+    <Page title="Profil Saya" subtitle="Kelola akun dan perjalanan belajar di KajianQu" icon={<Users color={colors.gold} size={28} />}>
       {profile.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-      <Card>
+      <Card style={featureStyles.profileHeroCard}>
         <View style={featureStyles.profileHeader}>
-          <View style={featureStyles.avatar}><Text style={featureStyles.avatarText}>{(profile.data?.nama || 'KQ').slice(0, 2).toUpperCase()}</Text></View>
+          {profile.data?.fotoUrl ? (
+            <Image accessibilityLabel={`Foto ${profile.data.nama}`} source={{ uri: profile.data.fotoUrl }} style={featureStyles.profileAvatarImage} />
+          ) : (
+            <View style={featureStyles.profileAvatar}><Text style={featureStyles.profileAvatarText}>{(profile.data?.nama || 'KQ').slice(0, 2).toUpperCase()}</Text></View>
+          )}
           <View style={featureStyles.flex}>
             <Text style={featureStyles.cardTitle}>{profile.data?.nama}</Text>
-            <Text style={featureStyles.accentText}>{profile.data?.role}</Text>
+            <Text style={featureStyles.accentText}>{profile.data?.role === 'siswa' ? 'Santri KajianQu' : profile.data?.role === 'asatidz' ? 'Asatidz KajianQu' : 'Administrator'}</Text>
+            <Text numberOfLines={1} style={featureStyles.muted}>{profile.data?.email}</Text>
           </View>
         </View>
-        <Text style={featureStyles.label}>Nama lengkap</Text>
-        <TextInput onChangeText={setName} style={featureStyles.input} value={name} />
-        <Text style={featureStyles.label}>Nomor WhatsApp</Text>
-        <TextInput keyboardType="phone-pad" onChangeText={setWhatsapp} style={featureStyles.input} value={whatsapp} />
-        <Text style={featureStyles.label}>Email</Text>
-        <View style={featureStyles.readonly}><Text style={featureStyles.muted}>{profile.data?.email}</Text></View>
-        {message ? <Text style={featureStyles.formMessage}>{message}</Text> : null}
-        <ActionButton label={busy ? 'Menyimpan...' : 'Simpan profil'} disabled={busy || !name.trim()} onPress={() => void save()} />
+        <ActionButton label="Edit profil" onPress={() => navigate('/profile/edit')} tone="soft" />
       </Card>
+      <View style={featureStyles.profileStats}>
+        <View style={featureStyles.profileStat}><Text style={featureStyles.profileStatValue}>Quran</Text><Text style={featureStyles.muted}>Riwayat latihan</Text></View>
+        <View style={featureStyles.profileStat}><Text style={featureStyles.profileStatValue}>Kelas</Text><Text style={featureStyles.muted}>Belajar terarah</Text></View>
+        <View style={featureStyles.profileStat}><Text style={featureStyles.profileStatValue}>Chat</Text><Text style={featureStyles.muted}>Tanya asatidz</Text></View>
+      </View>
       <View style={featureStyles.grid}>
         <Card onPress={() => navigate('/quran/riwayat')} style={featureStyles.profileMenu}>
-          <BookOpen color={colors.primary} size={22} /><Text style={featureStyles.cardTitle}>Riwayat Quran</Text>
+          <BookOpen color={colors.primary} size={22} /><View style={featureStyles.flex}><Text style={featureStyles.cardTitle}>Riwayat Quran</Text><Text style={featureStyles.muted}>Lihat hasil murojaah dan belajar</Text></View><ChevronRight color={colors.textMuted} size={20} />
         </Card>
         <Card onPress={() => navigate('/achievement')} style={featureStyles.profileMenu}>
-          <Award color={colors.primary} size={22} /><Text style={featureStyles.cardTitle}>Achievement</Text>
+          <Award color={colors.primary} size={22} /><View style={featureStyles.flex}><Text style={featureStyles.cardTitle}>Achievement</Text><Text style={featureStyles.muted}>Pantau pencapaian belajar</Text></View><ChevronRight color={colors.textMuted} size={20} />
+        </Card>
+        <Card onPress={() => navigate('/profile/change-password')} style={featureStyles.profileMenu}>
+          <ShieldCheck color={colors.primary} size={22} /><View style={featureStyles.flex}><Text style={featureStyles.cardTitle}>Keamanan akun</Text><Text style={featureStyles.muted}>Ubah kata sandi akun</Text></View><ChevronRight color={colors.textMuted} size={20} />
+        </Card>
+        {profile.data?.role === 'asatidz' ? (
+          <Card onPress={() => navigate('/asatidz/materials')} style={featureStyles.profileMenu}>
+            <Library color={colors.primary} size={22} /><View style={featureStyles.flex}><Text style={featureStyles.cardTitle}>Kelola konten</Text><Text style={featureStyles.muted}>Materi dan jadwal live</Text></View><ChevronRight color={colors.textMuted} size={20} />
+          </Card>
+        ) : null}
+        <Card onPress={() => navigate('/notifications')} style={featureStyles.profileMenu}>
+          <Bell color={colors.primary} size={22} /><View style={featureStyles.flex}><Text style={featureStyles.cardTitle}>Notifikasi</Text><Text style={featureStyles.muted}>Pembaruan kelas dan aktivitas</Text></View><ChevronRight color={colors.textMuted} size={20} />
         </Card>
       </View>
       <ActionButton label="Keluar dari akun" onPress={() => void logout()} tone="soft" icon={<LogOut color={colors.primary} size={18} />} />
@@ -836,22 +866,43 @@ export function QiblaScreen() {
   )
 }
 
-export function NotificationsScreen() {
+export function NotificationsScreen({ navigate }: { navigate: FeatureNavigate }) {
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: ['notifications'], queryFn: listNotifications })
+
+  async function openNotification(id: string, actionUrl: string | null) {
+    try {
+      await markNotificationRead(id)
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } finally {
+      if (actionUrl?.startsWith('/')) navigate(actionUrl)
+      else if (actionUrl && /^https:\/\//i.test(actionUrl)) void Linking.openURL(actionUrl)
+    }
+  }
+
   return (
     <Page
       title="Notifikasi"
       subtitle="Pembaruan kelas, kajian live, materi, dan aktivitas akun"
       icon={<Bell color={colors.gold} size={28} />}
     >
-      <Card>
-        <View style={featureStyles.roomRow}>
-          <View style={featureStyles.roomIcon}><Bell color={colors.white} size={20} /></View>
-          <View style={featureStyles.flex}>
-            <Text style={featureStyles.cardTitle}>Belum ada notifikasi baru</Text>
-            <Text style={featureStyles.muted}>Notifikasi akan tampil otomatis saat ada pembaruan yang relevan untuk akun Anda.</Text>
+      <QueryState loading={query.isLoading} error={query.error} empty={!query.isLoading && !query.data?.length} onRetry={() => void query.refetch()} />
+      {(query.data || []).map((item) => (
+        <Card key={item.id} onPress={() => void openNotification(item.id, item.actionUrl)} style={!item.isRead ? featureStyles.unreadCard : undefined}>
+          <View style={featureStyles.roomRow}>
+            <View style={[featureStyles.roomIcon, item.isRead && featureStyles.roomIconRead]}><Bell color={colors.white} size={20} /></View>
+            <View style={featureStyles.flex}>
+              <View style={featureStyles.notificationTitleRow}>
+                <Text style={featureStyles.cardTitle}>{item.title}</Text>
+                {!item.isRead ? <View style={featureStyles.unreadDot} /> : null}
+              </View>
+              <Text style={featureStyles.muted}>{item.message}</Text>
+              <Text style={featureStyles.notificationTime}>{formatDate(item.createdAt)}</Text>
+            </View>
+            {item.actionUrl ? <ChevronRight color={colors.textMuted} size={20} /> : null}
           </View>
-        </View>
-      </Card>
+        </Card>
+      ))}
     </Page>
   )
 }
@@ -872,13 +923,13 @@ const featureStyles = StyleSheet.create({
   flex: { flex: 1 },
   page: { flex: 1, backgroundColor: colors.background },
   pageContent: { flexGrow: 1 },
-  hero: { minHeight: 222, backgroundColor: colors.primary, paddingHorizontal: 26, paddingTop: 50, paddingBottom: 34, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden', justifyContent: 'flex-end' },
+  hero: { minHeight: 166, backgroundColor: colors.primary, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 24, overflow: 'hidden', justifyContent: 'flex-end' },
   heroGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: colors.primaryDark, opacity: 0.18, right: -95, top: -95 },
   heroGlowTwo: { position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', left: -80, bottom: -90 },
-  heroIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-  heroTitle: { color: colors.white, fontSize: 27, fontWeight: '900', letterSpacing: -0.5 },
-  heroSubtitle: { color: '#D9EEE7', fontSize: 15, lineHeight: 23, marginTop: 7, maxWidth: 720 },
-  container: { width: '100%', maxWidth: 1220, alignSelf: 'center', paddingHorizontal: 26, paddingTop: 24, paddingBottom: 40, gap: spacing.md },
+  heroIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center', marginBottom: 9 },
+  heroTitle: { color: colors.white, fontSize: 23, fontWeight: '900', letterSpacing: -0.4 },
+  heroSubtitle: { color: '#D9EEE7', fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 720 },
+  container: { width: '100%', maxWidth: 1220, alignSelf: 'center', marginTop: -2, backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 40, gap: spacing.md },
   card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: '#E3EBE8', padding: spacing.lg, gap: spacing.md, ...shadow.card },
   pressed: { opacity: 0.58 },
   action: { minHeight: 48, backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center' },
@@ -901,6 +952,7 @@ const featureStyles = StyleSheet.create({
   pillActiveText: { color: colors.white },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   mediaPlaceholder: { height: 132, borderRadius: 10, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  mediaImage: { width: '100%', height: 132, borderRadius: 10, backgroundColor: colors.surfaceMuted },
   badge: { alignSelf: 'flex-start', borderRadius: 5, backgroundColor: colors.gold, paddingHorizontal: spacing.sm, paddingVertical: 5 },
   badgeText: { color: '#2B2400', fontWeight: '900', fontSize: 10, textTransform: 'uppercase' },
   cardTitle: { color: colors.text, fontSize: 15, fontWeight: '900', lineHeight: 21 },
@@ -909,6 +961,7 @@ const featureStyles = StyleSheet.create({
   detailBody: { color: colors.text, fontSize: 16, lineHeight: 28 },
   accentText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarImage: { width: 70, height: 70, borderRadius: 35, backgroundColor: colors.surfaceMuted },
   avatarText: { color: colors.white, fontSize: 21, fontWeight: '900' },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   verifiedText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
@@ -918,6 +971,7 @@ const featureStyles = StyleSheet.create({
   metaGrid: { gap: spacing.sm, paddingVertical: spacing.sm, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   liveRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  liveImage: { width: '100%', height: 160, borderRadius: 12, backgroundColor: colors.surfaceMuted },
   liveStatus: { borderRadius: radius.pill, backgroundColor: colors.goldSoft, paddingHorizontal: spacing.sm, paddingVertical: 5 },
   liveStatusActive: { backgroundColor: colors.dangerSoft },
   liveStatusText: { color: colors.danger, fontSize: 11, fontWeight: '900' },
@@ -952,8 +1006,20 @@ const featureStyles = StyleSheet.create({
   composerInput: { flex: 1, minHeight: 46, maxHeight: 130, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, color: colors.text, outlineStyle: 'none' } as object,
   sendButton: { width: 46, height: 46, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   profileHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  profileHeroCard: { backgroundColor: '#F7FCF9', borderColor: '#CBE6DC' },
+  profileAvatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.primary, borderWidth: 4, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  profileAvatarImage: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.surfaceMuted, borderWidth: 4, borderColor: colors.white },
+  profileAvatarText: { color: colors.white, fontSize: 22, fontWeight: '900' },
+  profileStats: { flexDirection: 'row', gap: 8 },
+  profileStat: { flex: 1, minHeight: 78, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 13, padding: 11, justifyContent: 'center', ...shadow.card },
+  profileStatValue: { color: colors.primaryDark, fontSize: 14, fontWeight: '900', marginBottom: 2 },
   readonly: { minHeight: 50, borderRadius: radius.md, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.md, justifyContent: 'center' },
   profileMenu: { flex: 1, minWidth: 220, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  unreadCard: { borderColor: '#9BCFBC', backgroundColor: '#F4FBF8' },
+  roomIconRead: { backgroundColor: colors.textMuted },
+  notificationTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  notificationTime: { color: colors.textMuted, fontSize: 10, marginTop: 5 },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   scoreBubble: { width: 58, height: 58, borderRadius: 29, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   scoreBubbleText: { color: colors.primary, fontSize: 16, fontWeight: '900' },
