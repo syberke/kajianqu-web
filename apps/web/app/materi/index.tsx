@@ -1,5 +1,6 @@
-import { PlaceholderScreen } from '@kajianku/ui-web'
+import { router } from 'expo-router'
+import { MaterialCatalogScreen } from '@kajianku/ui-web'
 
 export default function MaterialsPage() {
-  return <PlaceholderScreen title="Materi kajian" description="Daftar materi published, filter keilmuan, progress, bookmark, dan quiz." />
+  return <MaterialCatalogScreen navigate={(href) => router.push(href as never)} />
 }
