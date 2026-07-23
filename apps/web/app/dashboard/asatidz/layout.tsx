@@ -1,24 +1,26 @@
-import { requireRole } from '@/lib/helpers/auth'
+import { redirect } from 'next/navigation'
+
+import { getAsatidzAccount } from '@/lib/auth/asatidz-access'
 import AsatidzLayoutClient from './AsatidzLayoutClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AsatidzLayout({ children }: { children: React.ReactNode }) {
-  const { profile } = await requireRole('asatidz')
+  const account = await getAsatidzAccount()
+  if (!account) redirect('/login')
 
   return (
     <AsatidzLayoutClient
       profile={
-        profile
-          ? {
-              id: profile.id,
-              nama: profile.nama ?? undefined,
-              email: profile.email ?? undefined,
-              foto_url: profile.foto_url ?? undefined,
-              role: profile.role ?? undefined,
-            }
-          : null
+        {
+          id: account.profile.id,
+          nama: account.profile.nama,
+          email: account.profile.email,
+          foto_url: account.profile.fotoUrl ?? undefined,
+          role: account.profile.role,
+        }
       }
+      access={account.access}
     >
       {children}
     </AsatidzLayoutClient>

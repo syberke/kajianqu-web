@@ -16,21 +16,24 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   const { id } = await params
-  const classPage = await db.privateClassPage.findFirst({
-    where: { id, isActive: true, asatidz: { isActive: true, asatidzProfile: { approved: true } } },
-    select: { id: true },
+  const classPage = await db.privateClass.findFirst({
+    where: { id, registrationStatus: 'open' },
+    select: { id: true, capacity: true },
   })
   if (!classPage) return NextResponse.json({ error: 'Kelas tidak tersedia.' }, { status: 404 })
 
-  const enrollment = await db.privateClassEnrollment.upsert({
-    where: { classId_studentId: { classId: id, studentId: user.id } },
-    create: { classId: id, studentId: user.id, status: 'pending' },
+  const activeCount = await db.classMember.count({ where: { classId: id, status: 'active' } })
+  if (activeCount >= classPage.capacity) return NextResponse.json({ error: 'Kapasitas kelas sudah penuh.' }, { status: 409 })
+
+  const enrollment = await db.classMember.upsert({
+    where: { classId_userId: { classId: id, userId: user.id } },
+    create: { classId: id, userId: user.id, status: 'pending' },
     update: {},
   })
 
   return NextResponse.json({
-    id: enrollment.id,
+    classId: enrollment.classId,
     status: enrollment.status,
-    message: enrollment.status === 'approved' ? 'Anda sudah terdaftar di kelas ini.' : 'Pendaftaran berhasil dan menunggu persetujuan Asatidz.',
+    message: enrollment.status === 'active' ? 'Anda sudah terdaftar di kelas ini.' : 'Pendaftaran berhasil dan menunggu persetujuan Asatidz.',
   })
 }

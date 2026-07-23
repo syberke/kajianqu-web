@@ -1,5 +1,5 @@
-import ProfileEditor from '@/components/profile/ProfileEditor'
+import AsatidzApplicationForm from '@/components/profile/AsatidzApplicationForm'
 
 export default function AsatidzProfilePage() {
-  return <ProfileEditor asatidz />
+  return <AsatidzApplicationForm />
 }

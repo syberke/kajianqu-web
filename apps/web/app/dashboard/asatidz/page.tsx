@@ -2,29 +2,28 @@ import Link from 'next/link'
 import { BookOpen, CalendarDays, ChevronRight, MessageCircle, Plus, Users, Video } from 'lucide-react'
 
 import { db } from '@/lib/db'
-import { requireRole } from '@/lib/helpers/auth'
+import { getAsatidzAccount } from '@/lib/auth/asatidz-access'
 
 export default async function AsatidzDashboardPage() {
-  const { user, profile } = await requireRole('asatidz')
+  const account = await getAsatidzAccount()
+  if (!account || !account.access.approved) return null
+  const { user, profile } = account
   const now = new Date()
   const startOfDay = new Date(now)
   startOfDay.setHours(0, 0, 0, 0)
   const endOfDay = new Date(startOfDay)
   endOfDay.setDate(endOfDay.getDate() + 1)
 
-  const [materials, enrollments, incomingMessages, liveToday, upcomingLive, recentMessages] = await Promise.all([
+  const [materials, privateClasses, incomingMessages, liveToday, upcomingLive, recentMessages] = await Promise.all([
     db.material.count({ where: { asatidzId: user.id } }),
-    db.privateClassEnrollment.findMany({
-      where: { class: { asatidzId: user.id } },
-      select: { studentId: true },
-    }),
+    db.privateClass.findMany({ where: { asatidzId: user.id }, select: { id: true } }),
     db.message.count({ where: { receiverId: user.id } }),
-    db.liveSession.count({
-      where: { asatidzId: user.id, scheduledAt: { gte: startOfDay, lt: endOfDay } },
+    db.liveEvent.count({
+      where: { asatidzId: user.id, startsAt: { gte: startOfDay, lt: endOfDay } },
     }),
-    db.liveSession.findMany({
-      where: { asatidzId: user.id, scheduledAt: { gte: now } },
-      orderBy: { scheduledAt: 'asc' },
+    db.liveEvent.findMany({
+      where: { asatidzId: user.id, startsAt: { gte: now }, status: { not: 'cancelled' } },
+      orderBy: { startsAt: 'asc' },
       take: 5,
     }),
     db.message.findMany({
@@ -35,8 +34,14 @@ export default async function AsatidzDashboardPage() {
     }),
   ])
 
-  const activeStudents = new Set(enrollments.map((item) => item.studentId)).size
-  const firstName = profile?.nama?.trim().split(/\s+/)[0] || 'Ustadz'
+  const activeMembers = privateClasses.length
+    ? await db.classMember.findMany({
+        where: { classId: { in: privateClasses.map((item) => item.id) }, status: 'active' },
+        select: { userId: true },
+      })
+    : []
+  const activeStudents = new Set(activeMembers.map((item) => item.userId)).size
+  const firstName = profile.nama?.trim().split(/\s+/)[0] || 'Ustadz'
 
   return (
     <div className="space-y-8">
@@ -80,7 +85,7 @@ export default async function AsatidzDashboardPage() {
                     <div className="flex h-12 w-16 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Video size={20} /></div>
                     <div>
                       <h3 className="text-sm font-black text-emerald-950">{item.title}</h3>
-                      <p className="mt-1 text-[10px] font-bold uppercase text-gray-400">{item.scheduledAt ? item.scheduledAt.toLocaleString('id-ID') : 'Jadwal belum ditentukan'}</p>
+                      <p className="mt-1 text-[10px] font-bold uppercase text-gray-400">{item.startsAt.toLocaleString('id-ID')}</p>
                     </div>
                   </div>
                   <ChevronRight size={18} className="text-gray-300" />

@@ -32,6 +32,7 @@ model Profile {
   savedAsatidz      SavedItem[]              @relation("SavedItemAsatidz")
   reviewsWritten    Review[]                 @relation("ReviewAuthor")
   reviewsReceived   Review[]                 @relation("ReviewAsatidz")
+  achievements      UserAchievement[]
 
   @@index([role])
   @@map("profiles")
@@ -42,6 +43,21 @@ model AsatidzProfile {
   bidang             String?
   latarBelakang      String?  @map("latar_belakang")
   approved           Boolean  @default(false)
+  status             String   @default("PENDING_PROFILE")
+  asatidzCode        String?  @unique(map: "asatidz_profiles_code_uq") @map("asatidz_code")
+  title              String?
+  formalEducation    String?  @map("formal_education")
+  nonformalEducation String?  @map("nonformal_education")
+  memorizationJuz    Decimal? @map("memorization_juz") @db.Decimal(4, 1)
+  sanadHistory       String?  @map("sanad_history")
+  bankAccountName    String?  @map("bank_account_name")
+  bankAccountType    String?  @map("bank_account_type")
+  teachingArea       String?  @map("teaching_area")
+  availability       Json     @default("{}")
+  reviewNote         String?  @map("review_note")
+  submittedAt        DateTime? @map("submitted_at") @db.Timestamptz(6)
+  reviewedBy         String?  @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime? @map("reviewed_at") @db.Timestamptz(6)
   cvUrl              String?  @map("cv_url")
   sertifikat         String?
   keahlian           String?
@@ -52,8 +68,12 @@ model AsatidzProfile {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   profile            Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  documents          AsatidzDocument[]
+  expertise          AsatidzExpertise[]
+  retrospectives     Retrospective[]
 
   @@index([approved])
+  @@index([status, submittedAt])
   @@map("asatidz_profiles")
 }
 
@@ -162,6 +182,7 @@ model Donation {
   note            String?
   paymentStatus   String?         @map("payment_status")
   paymentProofUrl String?         @map("payment_proof_url")
+  idempotencyKey  String?         @unique @map("idempotency_key")
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user            Profile?        @relation("DonationUser", fields: [userId], references: [id])
@@ -209,12 +230,18 @@ model Material {
   summary      String?
   description  String?
   youtubeUrl   String?     @map("youtube_url")
+  durationMinutes Int?     @map("duration_minutes")
   thumbnailUrl String?     @map("thumbnail_url")
   level        String?
   type         String
   isPublished  Boolean     @default(false) @map("is_published")
   reviewStatus String      @default("pending") @map("review_status")
   reviewNote   String?     @map("review_note")
+  workflowStatus String    @default("DRAFT") @map("workflow_status")
+  publishedAt  DateTime?   @map("published_at") @db.Timestamptz(6)
+  publishedBy  String?     @map("published_by") @db.Uuid
+  language     String      @default("id")
+  referencesText String?   @map("references_text")
   keilmuanId   String?     @map("keilmuan_id") @db.Uuid
   asatidzId    String?     @map("asatidz_id") @db.Uuid
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -223,12 +250,309 @@ model Material {
   asatidz      Profile?    @relation("MaterialAsatidz", fields: [asatidzId], references: [id])
   quizzes      Quiz[]
   savedItems   SavedItem[]
+  reviews      MaterialReview[]
+  fees         Fee[]
 
   @@index([asatidzId, createdAt])
   @@index([keilmuanId])
   @@index([isPublished, createdAt])
   @@index([reviewStatus, createdAt])
   @@map("materials")
+}
+
+model AsatidzDocument {
+  id           String   @id @default(uuid()) @db.Uuid
+  asatidzId    String   @map("asatidz_id") @db.Uuid
+  documentType String   @map("document_type")
+  storagePath  String   @map("storage_path")
+  mimeType     String   @map("mime_type")
+  sizeBytes    BigInt   @map("size_bytes")
+  status       String   @default("pending")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  reviewedBy   String?  @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  asatidz      AsatidzProfile @relation(fields: [asatidzId], references: [id], onDelete: Cascade)
+
+  @@index([asatidzId])
+  @@map("asatidz_documents")
+}
+
+model ExpertiseTag {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  asatidz     AsatidzExpertise[]
+
+  @@index([isActive, sortOrder])
+  @@map("expertise_tags")
+}
+
+model AsatidzExpertise {
+  asatidzId String   @map("asatidz_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  asatidz   AsatidzProfile @relation(fields: [asatidzId], references: [id], onDelete: Cascade)
+  tag       ExpertiseTag   @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([asatidzId, tagId])
+  @@index([tagId])
+  @@map("asatidz_expertise")
+}
+
+model MaterialReview {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  reviewerId String   @map("reviewer_id") @db.Uuid
+  decision   String
+  note       String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([materialId, createdAt])
+  @@map("material_reviews")
+}
+
+model Fee {
+  id        String   @id @default(uuid()) @db.Uuid
+  materialId String  @map("material_id") @db.Uuid
+  asatidzId String   @map("asatidz_id") @db.Uuid
+  amount    Decimal  @db.Decimal(16, 2)
+  currency  String   @default("IDR") @db.Char(3)
+  note      String?
+  status    String   @default("approved")
+  decidedBy String   @map("decided_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  material  Material @relation(fields: [materialId], references: [id])
+
+  @@unique([materialId])
+  @@index([asatidzId, status, createdAt])
+  @@map("fees")
+}
+
+model Payout {
+  id          String   @id @default(uuid()) @db.Uuid
+  asatidzId   String   @map("asatidz_id") @db.Uuid
+  totalAmount Decimal  @map("total_amount") @db.Decimal(16, 2)
+  currency    String   @default("IDR") @db.Char(3)
+  status      String   @default("DRAFT")
+  createdBy   String   @map("created_by") @db.Uuid
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  items       PayoutItem[]
+  proofs      PayoutProof[]
+
+  @@index([asatidzId, createdAt])
+  @@map("payouts")
+}
+
+model PayoutItem {
+  payoutId String  @map("payout_id") @db.Uuid
+  feeId    String  @map("fee_id") @db.Uuid
+  amount   Decimal @db.Decimal(16, 2)
+  payout   Payout  @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+
+  @@id([payoutId, feeId])
+  @@index([feeId])
+  @@map("payout_items")
+}
+
+model PayoutProof {
+  id          String   @id @default(uuid()) @db.Uuid
+  payoutId    String   @map("payout_id") @db.Uuid
+  storagePath String   @map("storage_path")
+  fileHash    String   @map("file_hash")
+  uploadedBy  String   @map("uploaded_by") @db.Uuid
+  uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  payout      Payout   @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+
+  @@index([payoutId])
+  @@map("payout_proofs")
+}
+
+model PrivateClass {
+  id                 String   @id @default(uuid()) @db.Uuid
+  asatidzId          String   @map("asatidz_id") @db.Uuid
+  title              String
+  description        String?
+  coverPath          String?  @map("cover_path")
+  capacity           Int      @default(20)
+  price              Decimal  @default(0) @db.Decimal(14, 2)
+  startsAt           DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime? @map("ends_at") @db.Timestamptz(6)
+  registrationStatus String   @default("open") @map("registration_status")
+  rules              String?
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([asatidzId, startsAt])
+  @@map("private_classes")
+}
+
+model ClassMember {
+  classId   String   @map("class_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  status    String   @default("pending")
+  joinedAt  DateTime? @map("joined_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([classId, userId])
+  @@index([userId, status])
+  @@map("class_members")
+}
+
+model ClassSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  classId         String   @map("class_id") @db.Uuid
+  title           String
+  startsAt        DateTime @map("starts_at") @db.Timestamptz(6)
+  durationMinutes Int      @map("duration_minutes")
+  meetingUrl      String?  @map("meeting_url")
+  meetingId       String?  @map("meeting_id")
+  passcode        String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([classId, startsAt])
+  @@map("class_sessions")
+}
+
+model ChatRoom {
+  id        String   @id @default(uuid()) @db.Uuid
+  roomType  String   @map("room_type")
+  classId   String?  @map("class_id") @db.Uuid
+  title     String?
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([classId])
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  roomId      String   @map("room_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  memberRole  String   @default("member") @map("member_role")
+  mutedUntil  DateTime? @map("muted_until") @db.Timestamptz(6)
+  blockedAt   DateTime? @map("blocked_at") @db.Timestamptz(6)
+  lastReadAt  DateTime? @map("last_read_at") @db.Timestamptz(6)
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("chat_room_members")
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  roomId      String   @map("room_id") @db.Uuid
+  senderId    String   @map("sender_id") @db.Uuid
+  replyToId   String?  @map("reply_to_id") @db.Uuid
+  content     String?
+  messageType String   @default("text") @map("message_type")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([roomId, createdAt])
+  @@map("chat_messages")
+}
+
+model LiveEvent {
+  id               String   @id @default(uuid()) @db.Uuid
+  title            String
+  asatidzId        String?  @map("asatidz_id") @db.Uuid
+  description      String?
+  provider         String
+  startsAt         DateTime @map("starts_at") @db.Timestamptz(6)
+  timezone         String   @default("Asia/Jakarta")
+  estimatedMinutes Int?     @map("estimated_minutes")
+  eventUrl         String   @map("event_url")
+  passcode         String?
+  thumbnailUrl     String?  @map("thumbnail_url")
+  visibility       String   @default("public")
+  status           String   @default("scheduled")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([asatidzId, startsAt])
+  @@index([status, startsAt])
+  @@map("live_events")
+}
+
+model MuamalatTopic {
+  id        String   @id @default(uuid()) @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  title     String
+  content   String
+  category  String?
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@map("muamalat_topics")
+}
+
+model MuamalatAnswer {
+  id         String   @id @default(uuid()) @db.Uuid
+  topicId    String   @map("topic_id") @db.Uuid
+  authorId   String   @map("author_id") @db.Uuid
+  content    String
+  isOfficial Boolean  @default(false) @map("is_official")
+  revision   Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([topicId, createdAt])
+  @@map("muamalat_answers")
+}
+
+model Retrospective {
+  id          String          @id @default(uuid()) @db.Uuid
+  asatidzId   String?         @map("asatidz_id") @db.Uuid
+  title       String
+  summary     String?
+  eventDate   DateTime?       @map("event_date") @db.Date
+  coverUrl    String?         @map("cover_url")
+  isPublished Boolean         @default(false) @map("is_published")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  asatidz     AsatidzProfile? @relation(fields: [asatidzId], references: [id], onDelete: SetNull)
+
+  @@index([asatidzId])
+  @@index([isPublished, eventDate])
+  @@map("retrospectives")
+}
+
+model Achievement {
+  id          String            @id @default(uuid()) @db.Uuid
+  code        String            @unique
+  title       String
+  description String
+  icon        String?
+  targetRole  String?           @map("target_role")
+  isActive    Boolean           @default(true) @map("is_active")
+  awards      UserAchievement[]
+
+  @@index([isActive, targetRole])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  userId        String      @map("user_id") @db.Uuid
+  achievementId String      @map("achievement_id") @db.Uuid
+  awardedBy     String?     @map("awarded_by") @db.Uuid
+  awardedAt     DateTime    @default(now()) @map("awarded_at") @db.Timestamptz(6)
+  evidence      Json        @default("{}")
+  user          Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+  @@index([achievementId])
+  @@index([awardedBy])
+  @@map("user_achievements")
 }
 
 model PrivateClassEnrollment {

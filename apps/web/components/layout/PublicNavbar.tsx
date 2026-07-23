@@ -142,6 +142,9 @@ export default function PublicNavbar({ userProfile }: Props) {
                     { label: 'Kiblat', href: '/kiblat' },
                     { label: 'Live', href: '/live' },
                     { label: 'Bahtsul Masail', href: '/bahtsul-masail' },
+                    { label: 'Muamalat', href: '/muamalat' },
+                    { label: 'Quote', href: '/quote' },
+                    { label: 'Kilas Balik', href: '/kilasbalik' },
                   ].map((item) => (
                     <Link key={item.href} role="menuitem" href={item.href} className="rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-emerald-50 hover:text-[#1a7a53]" onClick={() => setFiturOpen(false)}>
                       {item.label}
@@ -247,6 +250,9 @@ export default function PublicNavbar({ userProfile }: Props) {
               { label: 'Kiblat', href: '/kiblat' },
               { label: 'Live', href: '/live' },
               { label: 'Bahtsul Masail', href: '/bahtsul-masail' },
+              { label: 'Muamalat', href: '/muamalat' },
+              { label: 'Quote', href: '/quote' },
+              { label: 'Kilas Balik', href: '/kilasbalik' },
             ].map((item) => (
               <Link key={item.href} href={item.href} className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>{item.label}</Link>
             ))}

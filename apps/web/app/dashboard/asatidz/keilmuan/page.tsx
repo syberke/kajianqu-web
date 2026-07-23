@@ -170,7 +170,7 @@ export default function ManajemenMateriAsatidz() {
                           : 'bg-amber-50 text-amber-700'
                       }`}>
                         {material.isPublished ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
-                        {material.isPublished ? 'Dipublikasikan' : 'Draft'}
+                        {material.isPublished ? 'Dipublikasikan' : workflowLabel(material.workflowStatus)}
                       </span>
                     </td>
                     <td className="px-3 py-5">
@@ -202,4 +202,18 @@ export default function ManajemenMateriAsatidz() {
       </section>
     </div>
   )
+}
+
+function workflowLabel(status: string) {
+  const labels: Record<string, string> = {
+    DRAFT: 'Draft',
+    SUBMITTED: 'Menunggu review',
+    IN_REVIEW: 'Sedang direview',
+    REVISION_REQUIRED: 'Perlu revisi',
+    APPROVED: 'Disetujui',
+    PUBLISHED: 'Dipublikasikan',
+    REJECTED: 'Ditolak',
+    ARCHIVED: 'Diarsipkan',
+  }
+  return labels[status] ?? status
 }

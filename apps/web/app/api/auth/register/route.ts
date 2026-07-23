@@ -10,9 +10,6 @@ const registrationSchema = z.object({
   email: z.email().max(254).transform((value) => value.toLowerCase()),
   no_wa: z.string().trim().regex(/^\+?[0-9][0-9 -]{7,18}$/),
   password: z.string().min(8).max(128),
-  bidang: z.string().trim().max(100).optional(),
-  bank: z.string().trim().max(100).optional(),
-  no_rekening: z.string().trim().max(100).optional(),
 })
 
 export async function POST(request: Request) {
@@ -27,9 +24,6 @@ export async function POST(request: Request) {
   const parsed = registrationSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Data pendaftaran belum lengkap atau tidak valid.' }, { status: 400 })
   const payload = parsed.data
-  if (payload.role === 'asatidz' && (!payload.bidang || !payload.bank || !payload.no_rekening)) {
-    return NextResponse.json({ error: 'Data bidang, bank, dan rekening Asatidz wajib diisi.' }, { status: 400 })
-  }
 
   const admin = createAdminClient()
   const { data, error } = await admin.auth.admin.createUser({
@@ -57,10 +51,8 @@ export async function POST(request: Request) {
     if (payload.role === 'asatidz') {
       const { error: asatidzError } = await admin.from('asatidz_profiles').upsert({
         id: userId,
-        bidang: payload.bidang,
-        bank: payload.bank,
-        no_rekening: payload.no_rekening,
         approved: false,
+        status: 'PENDING_PROFILE',
       })
       if (asatidzError) throw asatidzError
     }

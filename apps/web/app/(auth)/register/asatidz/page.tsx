@@ -7,11 +7,8 @@ import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 const imgLoginArt = "https://images.unsplash.com/photo-1585036156171-384164a8c675?auto=format&fit=crop&q=80&w=1200"
 const imgLogo     = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
 
-const BANKS       = ['BCA','BNI','BRI','Mandiri','BSI','CIMB Niaga','Permata','Danamon','Lainnya']
-const BIDANG_LIST = ['Tahfidz','Tajwid','Fiqih','Akhlak','Akidah','Tafsir','Hadits','Lainnya']
-
 export default function RegisterAsatidzPage() {
-  const [form, setForm] = useState({ nama: '', email: '', no_wa: '', password: '', bidang: '', bank: '', no_rekening: '' })
+  const [form, setForm] = useState({ nama: '', email: '', no_wa: '', password: '' })
   const [showPass, setShowPass]   = useState(false)
   const [loading, setLoading]     = useState(false)
   const [message, setMessage]     = useState('')
@@ -47,7 +44,7 @@ export default function RegisterAsatidzPage() {
             <CheckCircle size={40} className="text-[#1a7a53]" />
           </div>
           <h2 className="text-3xl font-semibold font-['Poppins',sans-serif] text-[#0c1421]">Pendaftaran Berhasil!</h2>
-          <p className="text-[#313957] text-lg">Silakan cek email untuk verifikasi. Akun akan diaktifkan setelah diverifikasi admin.</p>
+          <p className="text-[#313957] text-lg">Silakan cek email, lalu masuk dan lengkapi profil Asatidz. Fitur mengajar dibuka setelah data disetujui admin.</p>
           <Link href="/login" className="block w-full bg-[#1a7a53] text-white text-lg text-center py-4 rounded-xl hover:bg-[#15613f] transition-colors">
             Masuk Sekarang
           </Link>
@@ -85,33 +82,9 @@ export default function RegisterAsatidzPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 py-2">
-              <div className="flex-1 h-px bg-[#d4d7e3]" />
-              <span className="text-[#1a7a53] text-sm font-semibold uppercase tracking-widest whitespace-nowrap">Data Asatidz</span>
-              <div className="flex-1 h-px bg-[#d4d7e3]" />
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-relaxed text-emerald-800">
+              Pendaftaran awal dibuat singkat. Setelah masuk, dashboard akan mengarahkan Anda untuk melengkapi pendidikan, pengalaman, keilmuan, rekening fee, CV, dan dokumen pendukung.
             </div>
-
-            <div className="space-y-2">
-              <label className="text-[#0c1421] text-base">Bidang Mengajar</label>
-              <select required value={form.bidang} onChange={e => onChange('bidang', e.target.value)}
-                className="w-full h-12 bg-[#f7fbff] border border-[#d4d7e3] rounded-xl px-4 text-base text-[#0c1421] focus:outline-none focus:border-[#1a7a53] focus:ring-2 focus:ring-[#1a7a53]/20 transition-all"
-              >
-                <option value="" disabled>Pilih bidang</option>
-                {BIDANG_LIST.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[#0c1421] text-base">Bank</label>
-              <select required value={form.bank} onChange={e => onChange('bank', e.target.value)}
-                className="w-full h-12 bg-[#f7fbff] border border-[#d4d7e3] rounded-xl px-4 text-base text-[#0c1421] focus:outline-none focus:border-[#1a7a53] focus:ring-2 focus:ring-[#1a7a53]/20 transition-all"
-              >
-                <option value="" disabled>Pilih bank</option>
-                {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-
-            <Field label="Nomor Rekening" placeholder="Masukkan nomor rekening" value={form.no_rekening} onChange={v => onChange('no_rekening', v)} required />
 
             {message && <p className="text-red-500 text-sm text-center bg-red-50 py-2 px-4 rounded-xl">{message}</p>}
 

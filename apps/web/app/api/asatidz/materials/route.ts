@@ -1,24 +1,7 @@
 import { NextResponse } from 'next/server'
-
 import { requireAsatidz } from '@/lib/auth/require-asatidz'
 import { db } from '@/lib/db'
-
-interface CreateMaterialPayload {
-  title?: string
-  summary?: string
-  type?: string
-  keilmuanId?: string
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-}
+import { asatidzMaterialSchema, materialSlug } from '@/lib/validation/material'
 
 export async function GET() {
   const user = await requireAsatidz()
@@ -40,6 +23,10 @@ export async function GET() {
       summary: material.summary,
       type: material.type,
       isPublished: material.isPublished,
+      workflowStatus: material.workflowStatus,
+      reviewNote: material.reviewNote,
+      youtubeUrl: material.youtubeUrl,
+      durationMinutes: material.durationMinutes,
       createdAt: material.createdAt.toISOString(),
       keilmuan: material.keilmuan,
     })),
@@ -50,13 +37,11 @@ export async function POST(request: Request) {
   const user = await requireAsatidz()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const payload = (await request.json().catch(() => null)) as CreateMaterialPayload | null
-  const title = payload?.title?.trim()
-  if (!title) {
-    return NextResponse.json({ error: 'Judul materi wajib diisi' }, { status: 400 })
-  }
+  const parsed = asatidzMaterialSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Materi belum lengkap atau formatnya tidak valid.', fields: parsed.error.flatten().fieldErrors }, { status: 400 })
+  const payload = parsed.data
 
-  if (payload?.keilmuanId) {
+  if (payload.keilmuanId) {
     const category = await db.keilmuan.findUnique({
       where: { id: payload.keilmuanId },
       select: { id: true },
@@ -68,13 +53,19 @@ export async function POST(request: Request) {
 
   const material = await db.material.create({
     data: {
-      title,
-      slug: `${slugify(title) || 'materi'}-${Date.now().toString(36)}`,
-      summary: payload?.summary?.trim() || null,
-      type: payload?.type?.trim() || 'materi',
-      keilmuanId: payload?.keilmuanId || null,
+      title: payload.title,
+      slug: `${materialSlug(payload.title) || 'materi'}-${Date.now().toString(36)}`,
+      summary: payload.summary?.trim() || null,
+      description: payload.description?.trim() || null,
+      youtubeUrl: payload.youtubeUrl?.trim() || null,
+      durationMinutes: payload.youtubeUrl ? payload.durationMinutes : null,
+      referencesText: payload.referencesText?.trim() || null,
+      type: payload.type,
+      keilmuanId: payload.keilmuanId || null,
       asatidzId: user.id,
       isPublished: false,
+      reviewStatus: 'pending',
+      workflowStatus: payload.submitForReview ? 'SUBMITTED' : 'DRAFT',
     },
     include: {
       keilmuan: { select: { nama: true } },
@@ -90,6 +81,10 @@ export async function POST(request: Request) {
         summary: material.summary,
         type: material.type,
         isPublished: material.isPublished,
+        workflowStatus: material.workflowStatus,
+        reviewNote: material.reviewNote,
+        youtubeUrl: material.youtubeUrl,
+        durationMinutes: material.durationMinutes,
         createdAt: material.createdAt.toISOString(),
         keilmuan: material.keilmuan,
       },

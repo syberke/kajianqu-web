@@ -7,10 +7,14 @@ export async function requireAsatidz() {
 
   const profile = await db.profile.findUnique({
     where: { id: user.id },
-    select: { role: true, isActive: true, asatidzProfile: { select: { approved: true } } },
+    select: { role: true, isActive: true, asatidzProfile: { select: { approved: true, status: true } } },
   })
 
   if (!profile?.isActive) return null
   if (profile.role === 'admin') return user
-  return profile.role === 'asatidz' && profile.asatidzProfile?.approved ? user : null
+  return profile.role === 'asatidz'
+    && profile.asatidzProfile?.approved
+    && profile.asatidzProfile.status === 'APPROVED'
+    ? user
+    : null
 }

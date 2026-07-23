@@ -39,6 +39,7 @@ export default function DetailMateriClient({ materi }: { materi: any }) {
 
   const videoUrl = materi.youtube_url || ''
   const embedUrl = getEmbedUrl(videoUrl)
+  const canReview = ['SUBMITTED', 'IN_REVIEW'].includes(materi.workflow_status)
 
   return (
     <div className="space-y-6">
@@ -136,6 +137,14 @@ export default function DetailMateriClient({ materi }: { materi: any }) {
                 </p>
               </div>
               <div className="p-3 bg-gray-50 rounded-xl">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Workflow</p>
+                <p className="text-xs font-black text-slate-700">{materi.workflow_status?.replaceAll('_', ' ') || 'TIDAK DIKETAHUI'}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Durasi</p>
+                <p className="text-xs font-bold text-slate-700">{materi.duration_minutes ? `${materi.duration_minutes} menit` : 'Materi teks'}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl">
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">ID Unik Konten</p>
                 <p className="text-xs font-mono text-gray-700 font-bold">{materi.id}</p>
               </div>
@@ -158,19 +167,20 @@ export default function DetailMateriClient({ materi }: { materi: any }) {
             <div className="space-y-3">
               <button 
                 onClick={() => handleDecision('approved')}
-                disabled={loading}
+                disabled={loading || !canReview}
                 className="w-full py-3 bg-[#064E3B] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#1a4d2e] transition-colors disabled:opacity-50"
               >
                 <CheckCircle size={18} /> {loading ? 'Memproses...' : 'Terima & Publikasi'}
               </button>
               <button 
                 onClick={() => handleDecision('rejected')}
-                disabled={loading}
+                disabled={loading || !canReview}
                 className="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-100 transition-colors disabled:opacity-50"
               >
                 <XCircle size={18} /> Tolak / Butuh Revisi
               </button>
             </div>
+            {!canReview && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500">Keputusan dinonaktifkan karena materi tidak lagi berada di antrean review.</p>}
           </div>
 
           <p className="text-[10px] text-gray-400 text-center italic px-4 leading-relaxed">
