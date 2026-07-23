@@ -23,20 +23,21 @@
 
 ## Web
 
-- `/`: beranda publik.
-- `/login`, `/register`: autentikasi.
-- `/materi`: materi published.
-- `/materi/[identifier]`: detail materi.
-- `/asatidz-list`: profil asatidz approved.
-- `/asatidz/[id]`: detail asatidz dan kelas tersedia.
-- `/quran`, `/quran/[surah]`: baca Al-Quran.
-- `/quran/riwayat`, `/achievement`: histori latihan dan milestone.
-- `/ai-quran`, `/ai-quran/murojaah`, `/ai-quran/belajar`: AI Quran.
-- `/donasi`: program donasi.
-- `/kelas`, `/live`, `/chat`, `/chat/[roomId]`: kelas, acara, dan pesan realtime.
+- `/` mengarahkan ke `/welcome`, beranda publik dengan desain KajianQu.
+- `/login`, `/register/siswa`, `/register/asatidz`: autentikasi.
+- `/keilmuan`, `/keilmuan/[id]`: katalog dan detail materi published.
+- `/materi`: alias kompatibel ke `/keilmuan`.
+- `/ustadz`, `/ustadz/[id]`: profil asatidz approved.
+- `/asatidz-list`: alias kompatibel ke `/ustadz`.
+- `/sahabat-quran`: baca Al-Quran.
+- `/quran`: alias kompatibel ke `/sahabat-quran`.
+- `/quran-ai`, `/quran-ai/murojaah/[surahId]`, `/quran-ai/belajar/[surahId]`, `/quran-ai/quiz`: AI Quran.
+- `/ai-quran`: alias kompatibel ke `/quran-ai`.
+- `/donasi` dan turunannya: program serta transaksi donasi.
+- `/kelas`, `/live`, `/chat`: kelas, acara, dan pesan.
 - `/doa`, `/dzikir`, `/quote`, `/kiblat`: layanan ibadah harian.
-- `/bahtsul-masail`, `/muamalat`: ruang diskusi.
+- `/bahtsul-masail`, `/muamalat`, `/achievement`: diskusi dan progres belajar.
 - `/profile`: profil pengguna.
-- `/siswa`, `/asatidz`, `/admin`: portal per role.
+- `/dashboard/siswa`, `/dashboard/asatidz`, `/dashboard/admin`: portal per role.
 
-Semua layar menggunakan ukuran fleksibel. Dashboard mengubah grid dari satu kolom pada layar kecil menjadi dua atau empat kolom pada tablet dan desktop.
+Semua layar menggunakan ukuran fleksibel. Dashboard mengubah tabel menjadi kartu atau scroll terkontrol pada layar kecil.

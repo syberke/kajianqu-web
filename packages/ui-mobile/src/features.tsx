@@ -13,6 +13,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Award,
+  Bell,
   BookMarked,
   BookOpen,
   CalendarDays,
@@ -218,7 +219,7 @@ export function MaterialCatalogScreen({ navigate }: { navigate: FeatureNavigate 
     const matchesLevel = level === 'Semua' || (item.level || '').toLowerCase() === level.toLowerCase()
     return matchesSearch && matchesLevel
   })
-  const itemWidth = width >= 1080 ? '31.8%' : width >= 720 ? '48.5%' : '100%'
+  const itemWidth = width >= 1080 ? '31.8%' : '48%'
   return (
     <Page title="Keilmuan" subtitle="Materi terpilih dari asatidz yang telah melalui proses review" icon={<GraduationCap color={colors.gold} size={28} />}>
       <SearchField value={search} onChange={setSearch} placeholder="Cari judul, topik, atau tingkat materi" />
@@ -835,6 +836,26 @@ export function QiblaScreen() {
   )
 }
 
+export function NotificationsScreen() {
+  return (
+    <Page
+      title="Notifikasi"
+      subtitle="Pembaruan kelas, kajian live, materi, dan aktivitas akun"
+      icon={<Bell color={colors.gold} size={28} />}
+    >
+      <Card>
+        <View style={featureStyles.roomRow}>
+          <View style={featureStyles.roomIcon}><Bell color={colors.white} size={20} /></View>
+          <View style={featureStyles.flex}>
+            <Text style={featureStyles.cardTitle}>Belum ada notifikasi baru</Text>
+            <Text style={featureStyles.muted}>Notifikasi akan tampil otomatis saat ada pembaruan yang relevan untuk akun Anda.</Text>
+          </View>
+        </View>
+      </Card>
+    </Page>
+  )
+}
+
 export function NotFoundScreen({ navigate }: { navigate: FeatureNavigate }) {
   return (
     <Page title="Halaman tidak ditemukan" subtitle="Tautan yang Anda buka tidak tersedia di KajianQu" icon={<CircleAlert color={colors.gold} size={28} />}>
@@ -851,16 +872,16 @@ const featureStyles = StyleSheet.create({
   flex: { flex: 1 },
   page: { flex: 1, backgroundColor: colors.background },
   pageContent: { flexGrow: 1 },
-  hero: { minHeight: 224, backgroundColor: colors.primaryDark, paddingHorizontal: spacing.xl, paddingTop: 48, paddingBottom: 34, overflow: 'hidden', justifyContent: 'flex-end' },
-  heroGlowOne: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: '#1E8E67', opacity: 0.45, right: -80, top: -90 },
-  heroGlowTwo: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: colors.gold, opacity: 0.08, left: -70, bottom: -80 },
-  heroIcon: { width: 52, height: 52, borderRadius: radius.lg, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-  heroTitle: { color: colors.white, fontSize: 31, fontWeight: '900', letterSpacing: -0.7 },
+  hero: { minHeight: 222, backgroundColor: colors.primary, paddingHorizontal: 26, paddingTop: 50, paddingBottom: 34, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden', justifyContent: 'flex-end' },
+  heroGlowOne: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: colors.primaryDark, opacity: 0.18, right: -95, top: -95 },
+  heroGlowTwo: { position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', left: -80, bottom: -90 },
+  heroIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  heroTitle: { color: colors.white, fontSize: 27, fontWeight: '900', letterSpacing: -0.5 },
   heroSubtitle: { color: '#D9EEE7', fontSize: 15, lineHeight: 23, marginTop: 7, maxWidth: 720 },
-  container: { width: '100%', maxWidth: 1220, alignSelf: 'center', padding: spacing.lg, gap: spacing.md },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.md, ...shadow.card },
+  container: { width: '100%', maxWidth: 1220, alignSelf: 'center', paddingHorizontal: 26, paddingTop: 24, paddingBottom: 40, gap: spacing.md },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: '#E3EBE8', padding: spacing.lg, gap: spacing.md, ...shadow.card },
   pressed: { opacity: 0.58 },
-  action: { minHeight: 48, backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: spacing.lg, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center' },
+  action: { minHeight: 48, backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center' },
   actionSoft: { backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: '#BDE2D5' },
   actionText: { color: colors.white, fontSize: 14, fontWeight: '900' },
   actionTextSoft: { color: colors.primaryDark },
@@ -871,7 +892,7 @@ const featureStyles = StyleSheet.create({
   errorState: { backgroundColor: colors.dangerSoft },
   stateTitle: { color: colors.text, fontSize: 18, fontWeight: '900', textAlign: 'center' },
   errorText: { color: colors.danger, lineHeight: 21 },
-  search: { minHeight: 52, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md },
+  search: { minHeight: 52, backgroundColor: colors.surface, borderRadius: 26, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, ...shadow.card },
   searchInput: { flex: 1, color: colors.text, fontSize: 15, outlineStyle: 'none' } as object,
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pill: { minHeight: 38, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center' },
@@ -879,10 +900,10 @@ const featureStyles = StyleSheet.create({
   pillText: { color: colors.textMuted, fontWeight: '800', fontSize: 12 },
   pillActiveText: { color: colors.white },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  mediaPlaceholder: { height: 150, borderRadius: radius.md, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  badge: { alignSelf: 'flex-start', borderRadius: radius.pill, backgroundColor: colors.primarySoft, paddingHorizontal: spacing.sm, paddingVertical: 5 },
-  badgeText: { color: colors.primary, fontWeight: '900', fontSize: 11, textTransform: 'uppercase' },
-  cardTitle: { color: colors.text, fontSize: 17, fontWeight: '900', lineHeight: 24 },
+  mediaPlaceholder: { height: 132, borderRadius: 10, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  badge: { alignSelf: 'flex-start', borderRadius: 5, backgroundColor: colors.gold, paddingHorizontal: spacing.sm, paddingVertical: 5 },
+  badgeText: { color: '#2B2400', fontWeight: '900', fontSize: 10, textTransform: 'uppercase' },
+  cardTitle: { color: colors.text, fontSize: 15, fontWeight: '900', lineHeight: 21 },
   detailTitle: { color: colors.text, fontSize: 28, fontWeight: '900', lineHeight: 36 },
   detailLead: { color: colors.primaryDark, fontSize: 18, fontWeight: '700', lineHeight: 29 },
   detailBody: { color: colors.text, fontSize: 16, lineHeight: 28 },

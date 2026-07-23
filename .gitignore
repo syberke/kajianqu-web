@@ -1,6 +1,7 @@
 node_modules
 .expo
 .expo-shared
+.next
 dist
 dist-*
 web-build
@@ -8,6 +9,7 @@ coverage
 .env
 .env.local
 *.log
+*.tsbuildinfo
 .DS_Store
 android
 ios

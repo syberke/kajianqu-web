@@ -13,17 +13,20 @@ import {
 } from 'react-native'
 import {
   AudioLines,
+  Bell,
   BookOpen,
   Bot,
   Check,
   ChevronRight,
   CircleAlert,
+  Clock3,
   Compass,
   GraduationCap,
   HeartHandshake,
   Library,
   MessageCircle,
   Mic,
+  Play,
   Quote,
   RotateCcw,
   Search,
@@ -47,9 +50,7 @@ import {
   getSurahVerses,
   isSupabaseConfigured,
   listLiveEvents,
-  listPrivateClasses,
   listPublishedMaterials,
-  listPublicAsatidz,
   listSurahs,
   saveQuranSession,
   transcribeQuran,
@@ -170,58 +171,64 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 const featureItems = [
   { title: "Al-Qur'an", icon: BookOpen, href: '/quran' },
-  { title: 'AI Quran', icon: Bot, href: '/ai-quran' },
-  { title: 'Materi', icon: GraduationCap, href: '/materi' },
-  { title: 'Asatidz', icon: Users, href: '/asatidz-list' },
-  { title: 'Kelas', icon: Video, href: '/kelas' },
-  { title: 'Live', icon: Video, href: '/live' },
-  { title: 'Chat', icon: MessageCircle, href: '/chat' },
+  { title: 'Keilmuan', icon: GraduationCap, href: '/materi' },
   { title: "Do'a", icon: BookOpen, href: '/doa' },
-  { title: 'Dzikir', icon: Sparkles, href: '/dzikir' },
   { title: 'Kiblat', icon: Compass, href: '/kiblat' },
-  { title: 'Quote', icon: Quote, href: '/quote' },
   { title: 'Donasi', icon: HeartHandshake, href: '/donasi' },
+  { title: 'AI Quran', icon: Bot, href: '/ai-quran' },
 ]
 
 export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate: Navigate }) {
-  const { width } = useWindowDimensions()
-  const columns = width >= 1100 ? 6 : width >= 700 ? 4 : width >= 450 ? 3 : 2
-  const cardWidth = `${100 / columns - 2}%` as `${number}%`
   const materials = useQuery({ queryKey: ['home-materials'], queryFn: () => listPublishedMaterials(3) })
   const live = useQuery({ queryKey: ['home-live'], queryFn: listLiveEvents })
-  const asatidz = useQuery({ queryKey: ['home-asatidz'], queryFn: listPublicAsatidz })
-  const classes = useQuery({ queryKey: ['home-classes'], queryFn: listPrivateClasses })
   const nextLive = live.data?.find((item) => item.status === 'live') || live.data?.[0]
+  const displayName = role === 'asatidz' ? 'Ust. Adi Hidayat' : role === 'admin' ? 'Admin KajianQu' : 'Sahabat KajianQu'
   return (
     <AppScreen padded={false}>
-      <BrandHeader
-        title={role === 'asatidz' ? 'Assalamu’alaikum, Ustadz' : role === 'admin' ? 'Pusat Kendali KajianQu' : 'Assalamu’alaikum'}
-        subtitle="Belajar, bertumbuh, dan dekat dengan Al-Qur'an"
-      />
-      <View style={styles.bodySection}>
-        <View style={[styles.homeIntro, width < 680 && styles.homeIntroCompact]}>
-          <View style={styles.homeIntroCopy}>
-            <Text style={styles.eyebrow}>SATU TEMPAT UNTUK BELAJAR</Text>
-            <Text style={styles.homeIntroTitle}>Baca Al-Qur'an, ikuti kajian, dan bertanya kepada asatidz.</Text>
-            <Text style={styles.homeIntroText}>Konten publik mengikuti status publish dan approval. Data pribadi tetap dilindungi sesuai peran akun.</Text>
-            <View style={styles.homeActions}>
-              <PrimaryButton label="Mulai baca Quran" onPress={() => navigate('/quran')} icon={<BookOpen color={colors.white} size={18} />} />
-              <PrimaryButton label="Lihat materi" onPress={() => navigate('/materi')} tone="secondary" />
-            </View>
+      <View style={styles.prayerHero}>
+        <View style={styles.prayerOrnamentOne} />
+        <View style={styles.prayerOrnamentTwo} />
+        <View style={styles.homeTopbar}>
+          <View style={styles.homeLogo}>
+            <BookOpen color={colors.gold} size={27} strokeWidth={2.2} />
+            <Text style={styles.homeLogoText}>KajianQu</Text>
           </View>
-          <View style={styles.homeStats}>
-            <View style={styles.homeStat}>
-              <Text style={styles.homeStatValue}>{asatidz.data?.length ?? '–'}</Text>
-              <Text style={styles.muted}>asatidz terverifikasi</Text>
+          <Pressable accessibilityLabel="Buka notifikasi" onPress={() => navigate('/notifications')} style={styles.notificationButton}>
+            <Bell color={colors.white} fill={colors.white} size={21} />
+            <View style={styles.notificationDot} />
+          </Pressable>
+        </View>
+        <View style={styles.currentPrayer}>
+          <Text style={styles.currentPrayerName}>Dzuhur</Text>
+          <Text style={styles.currentPrayerTime}>10:30 WIB</Text>
+          <Text style={styles.currentPrayerCountdown}>-01:30:06 menjelang adzan</Text>
+        </View>
+        <View style={styles.prayerSchedule}>
+          {[
+            ['Subuh', '04:37'],
+            ['Dzuhur', '11:54'],
+            ['Ashar', '15:14'],
+            ['Maghrib', '18:10'],
+            ['Isya', '19:02'],
+          ].map(([name, time]) => (
+            <View key={name} style={styles.prayerScheduleItem}>
+              <Text style={styles.prayerScheduleName}>{name}</Text>
+              <Text style={styles.prayerScheduleTime}>{time}</Text>
             </View>
-            <View style={styles.homeStat}>
-              <Text style={styles.homeStatValue}>{classes.data?.length ?? '–'}</Text>
-              <Text style={styles.muted}>kelas tersedia</Text>
-            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.homeSheet}>
+        <View style={styles.greetingRow}>
+          <View>
+            <Text style={styles.greetingLabel}>Assalamu'alaikum</Text>
+            <Text style={styles.greetingName}>{displayName}</Text>
           </View>
+          <View style={styles.greetingBadge}><Text style={styles.greetingBadgeText}>Sambutan</Text></View>
         </View>
 
-        <SectionTitle title="Fitur utama" subtitle="Semua jalur tersambung ke halaman yang dapat digunakan" />
+        <SectionTitle title="Fitur Utama" />
         <View style={styles.featureGrid}>
           {featureItems.map((item) => {
             const Icon = item.icon
@@ -229,54 +236,81 @@ export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate
               <Pressable
                 key={item.href}
                 onPress={() => navigate(item.href)}
-                style={({ pressed }) => [styles.featureCard, { width: cardWidth }, pressed && styles.cardPressed]}
+                style={({ pressed }) => [styles.featureCard, pressed && styles.cardPressed]}
               >
                 <View style={styles.featureIcon}>
-                  <Icon color={colors.white} size={24} />
+                  <Icon color={colors.white} size={22} />
                 </View>
                 <Text style={styles.featureTitle}>{item.title}</Text>
-                <ChevronRight color={colors.primary} size={18} />
               </Pressable>
             )
           })}
         </View>
 
+        <SectionTitle
+          title="Jadwal Live"
+          subtitle="Kajian terdekat hari ini"
+          action={<Pressable onPress={() => navigate('/live')} style={styles.seeAllButton}><Text style={styles.seeAllText}>Lihat Semua</Text></Pressable>}
+        />
         {nextLive ? (
-          <>
-            <SectionTitle title={nextLive.status === 'live' ? 'Sedang live' : 'Jadwal kajian terdekat'} subtitle="Jadwal berasal dari data acara KajianQu" />
-            <SurfaceCard onPress={() => navigate('/live')} style={styles.liveHighlight}>
-            <View style={styles.rowGap}>
-                <View style={styles.liveIcon}><Video color={colors.white} size={23} /></View>
-                <View style={styles.flex}>
-                  <Text style={styles.cardTitle}>{nextLive.title}</Text>
-                  <Text style={styles.muted}>{new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(nextLive.startsAt))}</Text>
-                </View>
-                <ChevronRight color={colors.primary} size={21} />
+          <SurfaceCard onPress={() => navigate('/live')} style={styles.liveScheduleCard}>
+            <View style={styles.liveScheduleRow}>
+              <View style={styles.liveTimeBox}>
+                <Clock3 color={colors.primary} size={17} />
+                <Text style={styles.liveTimeText}>{new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date(nextLive.startsAt))}</Text>
               </View>
-            </SurfaceCard>
-          </>
-        ) : null}
+              <View style={styles.flex}>
+                <Text style={styles.cardTitle}>{nextLive.title}</Text>
+                <Text style={styles.muted}>{nextLive.status === 'live' ? 'Sedang berlangsung' : 'Terjadwal'}</Text>
+              </View>
+              <View style={styles.liveJoinButton}><Text style={styles.liveJoinText}>Mulai</Text></View>
+            </View>
+          </SurfaceCard>
+        ) : (
+          <SurfaceCard style={styles.liveScheduleCard}>
+            <View style={styles.liveScheduleRow}>
+              <View style={styles.liveTimeBox}><Video color={colors.primary} size={20} /></View>
+              <View style={styles.flex}>
+                <Text style={styles.cardTitle}>Belum ada live hari ini</Text>
+                <Text style={styles.muted}>Jadwal baru akan muncul otomatis.</Text>
+              </View>
+            </View>
+          </SurfaceCard>
+        )}
 
-        <SectionTitle title="Kajian pilihan" subtitle="Materi terbaru dari asatidz terverifikasi" />
+        <SectionTitle
+          title="Materi Pilihan"
+          subtitle="Belajar bersama asatidz terverifikasi"
+          action={<Pressable onPress={() => navigate('/materi')} style={styles.seeAllButton}><Text style={styles.seeAllText}>Lihat Semua</Text></Pressable>}
+        />
         {materials.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {materials.isError ? <ErrorState message={materials.error.message} onRetry={() => void materials.refetch()} /> : null}
         {materials.data?.map((item) => (
-          <SurfaceCard key={item.id} onPress={() => navigate(`/materi/${item.slug || item.id}`)}>
+          <SurfaceCard key={item.id} onPress={() => navigate(`/materi/${item.slug || item.id}`)} style={styles.materialRowCard}>
             <View style={styles.rowGap}>
               <View style={styles.videoThumb}>
-                <Video color={colors.white} size={24} />
+                <Play color={colors.white} fill={colors.white} size={19} />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text numberOfLines={2} style={styles.muted}>{item.summary || item.description || 'Materi KajianQu'}</Text>
               </View>
-              <ChevronRight color={colors.textMuted} size={20} />
+              <ChevronRight color={colors.textMuted} size={19} />
             </View>
           </SurfaceCard>
         ))}
         {!materials.isLoading && !materials.data?.length ? (
-          <EmptyState title="Materi belum dipublikasikan" description="Materi akan tampil otomatis setelah disetujui dan dipublikasikan." />
+          <EmptyState title="Materi belum dipublikasikan" description="Materi akan tampil otomatis setelah disetujui." />
         ) : null}
+
+        <Pressable onPress={() => navigate('/ai-quran')} style={styles.aiCta}>
+          <View style={styles.aiCtaIcon}><Mic color={colors.white} size={27} /></View>
+          <View style={styles.flex}>
+            <Text style={styles.aiCtaTitle}>Cek Tajwid dengan AI</Text>
+            <Text style={styles.aiCtaText}>Latih murojaah dan pelajari bacaan dengan umpan balik terperinci.</Text>
+          </View>
+          <ChevronRight color={colors.white} size={23} />
+        </Pressable>
       </View>
     </AppScreen>
   )
@@ -655,51 +689,66 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
   }
 
   return (
-    <AppScreen>
-      <View style={styles.authBrand}>
-        <BookOpen color={colors.gold} size={54} />
-        <Text style={styles.authLogo}>KajianQu</Text>
-      </View>
-      <Text style={styles.authTitle}>{mode === 'login' ? 'Masuk ke akun' : 'Buat akun baru'}</Text>
-      <Text style={styles.authSubtitle}>{mode === 'login' ? 'Lanjutkan perjalanan belajar Anda' : 'Pilih peran dan lengkapi data dasar'}</Text>
-      {mode === 'register' ? (
-        <View style={styles.roleSelector}>
-          {(['siswa', 'asatidz'] as Role[]).map((item) => (
-            <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleOption, role === item && styles.roleOptionActive]}>
-              <Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item === 'siswa' ? 'Siswa' : 'Asatidz'}</Text>
-            </Pressable>
-          ))}
+    <AppScreen padded={false}>
+      <View style={styles.authPage}>
+        <View style={styles.authBrand}>
+          <View style={styles.authLogoMark}>
+            <BookOpen color={colors.gold} size={56} strokeWidth={2.4} />
+          </View>
+          <Text style={styles.authLogo}>KajianQu</Text>
+          <Text style={styles.authTagline}>Elevating Islamic Education</Text>
         </View>
-      ) : null}
-      <Text style={styles.inputLabel}>Alamat email</Text>
-      <TextInput
-        autoCapitalize="none"
-        autoComplete="email"
-        inputMode="email"
-        onChangeText={setEmail}
-        placeholder="nama@email.com"
-        placeholderTextColor={colors.textMuted}
-        style={styles.textField}
-        value={email}
-      />
-      <Text style={styles.inputLabel}>Kata sandi</Text>
-      <TextInput
-        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-        onChangeText={setPassword}
-        placeholder="Minimal 8 karakter"
-        placeholderTextColor={colors.textMuted}
-        secureTextEntry
-        style={styles.textField}
-        value={password}
-      />
-      {message ? <Text style={styles.formMessage}>{message}</Text> : null}
-      <PrimaryButton label={loading ? 'Mohon tunggu...' : mode === 'login' ? 'Masuk' : 'Daftar'} disabled={loading} onPress={() => void submit()} />
-      <Pressable onPress={() => navigate(mode === 'login' ? '/register' : '/login')} style={styles.authSwitch}>
-        <Text style={styles.muted}>
-          {mode === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
-          <Text style={styles.authLink}>{mode === 'login' ? 'Daftar sekarang' : 'Masuk'}</Text>
-        </Text>
-      </Pressable>
+        <View style={styles.authPanel}>
+          <Text style={styles.authTitle}>{mode === 'login' ? 'Masuk ke Akun' : 'Buat Akun Baru'}</Text>
+          <Text style={styles.authSubtitle}>{mode === 'login' ? 'Lanjutkan perjalanan belajar bersama KajianQu' : 'Pilih peran dan lengkapi data dasar'}</Text>
+          {mode === 'register' ? (
+            <View style={styles.roleSelector}>
+              {(['siswa', 'asatidz'] as Role[]).map((item) => (
+                <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleOption, role === item && styles.roleOptionActive]}>
+                  <Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item === 'siswa' ? 'Siswa' : 'Asatidz'}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <Text style={styles.inputLabel}>Alamat Email</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="email"
+            inputMode="email"
+            onChangeText={setEmail}
+            placeholder="nama@email.com"
+            placeholderTextColor="#93A09A"
+            style={styles.textField}
+            value={email}
+          />
+          <View style={styles.passwordLabelRow}>
+            <Text style={styles.inputLabel}>Kata Sandi</Text>
+            {mode === 'login' ? <Text style={styles.forgotPassword}>Lupa kata sandi?</Text> : null}
+          </View>
+          <TextInput
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            onChangeText={setPassword}
+            placeholder="Minimal 8 karakter"
+            placeholderTextColor="#93A09A"
+            secureTextEntry
+            style={styles.textField}
+            value={password}
+          />
+          {message ? <Text style={styles.formMessage}>{message}</Text> : null}
+          <PrimaryButton label={loading ? 'Mohon tunggu...' : mode === 'login' ? 'Masuk' : 'Daftar'} disabled={loading} onPress={() => void submit()} />
+          <Pressable onPress={() => navigate(mode === 'login' ? '/register' : '/login')} style={styles.authSwitch}>
+            <Text style={styles.muted}>
+              {mode === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
+              <Text style={styles.authLink}>{mode === 'login' ? 'Daftar sekarang' : 'Masuk'}</Text>
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.authFooter}>
+          <Text style={styles.authFooterBrand}>KajianQu</Text>
+          <Text style={styles.authFooterText}>© 2026 KajianQu. Elevating Islamic Education.</Text>
+          <Text style={styles.authFooterLinks}>Kebijakan Privasi   •   Syarat Layanan   •   Bantuan</Text>
+        </View>
+      </View>
     </AppScreen>
   )
 }
@@ -782,11 +831,11 @@ function formatDuration(value: number) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: '#FFFFFF' },
   scrollContent: { flexGrow: 1 },
   screenContent: { width: '100%', maxWidth: 1240, alignSelf: 'center' },
   padded: { padding: spacing.lg },
-  brandHeader: { backgroundColor: colors.primaryDark, paddingHorizontal: spacing.xl, paddingTop: 52, paddingBottom: 34, borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg, overflow: 'hidden' },
+  brandHeader: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingTop: 56, paddingBottom: 36, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: 'hidden' },
   brandHeaderCompact: { paddingTop: 24, paddingBottom: 20 },
   brandGlowLarge: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: colors.primary, opacity: 0.55, right: -75, top: -90 },
   brandGlowGold: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.gold, opacity: 0.09, left: -55, bottom: -95 },
@@ -797,18 +846,18 @@ const styles = StyleSheet.create({
   heroTitleCompact: { fontSize: 22 },
   heroSubtitle: { color: '#DDF3EA', fontSize: 15, marginTop: spacing.sm, lineHeight: 22 },
   bodySection: { padding: spacing.lg, gap: spacing.md, width: '100%', maxWidth: 1240, alignSelf: 'center' },
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, marginBottom: spacing.sm, ...shadow.card },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: '#E5ECE9', padding: spacing.lg, marginBottom: spacing.sm, ...shadow.card },
   cardPressed: { opacity: 0.72, transform: [{ scale: 0.995 }] },
-  button: { minHeight: 50, borderRadius: radius.md, backgroundColor: colors.primary, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  button: { minHeight: 54, borderRadius: 28, backgroundColor: colors.primary, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   buttonSecondary: { backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primary },
   buttonDanger: { backgroundColor: colors.danger },
   buttonPressed: { opacity: 0.55 },
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '800' },
   buttonSecondaryText: { color: colors.primary },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: 22, marginBottom: spacing.sm },
   sectionHeadingCopy: { flex: 1 },
-  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
-  sectionSubtitle: { color: colors.textMuted, marginTop: 2, lineHeight: 20 },
+  sectionTitle: { color: '#111A17', fontSize: 18, fontWeight: '900' },
+  sectionSubtitle: { color: colors.textMuted, fontSize: 12, marginTop: 2, lineHeight: 18 },
   homeIntro: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, flexDirection: 'row', alignItems: 'stretch', gap: spacing.xl, ...shadow.card },
   homeIntroCompact: { flexDirection: 'column' },
   homeIntroCopy: { flex: 1, justifyContent: 'center' },
@@ -818,6 +867,41 @@ const styles = StyleSheet.create({
   homeStats: { minWidth: 220, backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.lg, justifyContent: 'center', gap: spacing.md },
   homeStat: { borderBottomWidth: 1, borderBottomColor: '#C8E1D8', paddingBottom: spacing.sm },
   homeStatValue: { color: colors.primaryDark, fontSize: 27, fontWeight: '900' },
+  prayerHero: { minHeight: 342, backgroundColor: colors.primary, paddingHorizontal: 26, paddingTop: 54, paddingBottom: 20, overflow: 'hidden' },
+  prayerOrnamentOne: { position: 'absolute', width: 210, height: 210, borderRadius: 105, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', left: -120, top: 105 },
+  prayerOrnamentTwo: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: colors.primaryDark, opacity: 0.14, right: -95, bottom: -120 },
+  homeTopbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  homeLogo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  homeLogoText: { color: colors.white, fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
+  notificationButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  notificationDot: { position: 'absolute', right: 8, top: 7, width: 7, height: 7, borderRadius: 4, backgroundColor: '#F44455', borderWidth: 1.5, borderColor: colors.white },
+  currentPrayer: { alignItems: 'center', marginTop: 39 },
+  currentPrayerName: { color: '#E4F5EF', fontSize: 15, fontWeight: '600' },
+  currentPrayerTime: { color: colors.white, fontSize: 32, lineHeight: 42, fontWeight: '900', letterSpacing: -0.8 },
+  currentPrayerCountdown: { color: '#E4F5EF', fontSize: 13 },
+  prayerSchedule: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 36 },
+  prayerScheduleItem: { alignItems: 'center', minWidth: 54 },
+  prayerScheduleName: { color: colors.white, fontSize: 13, fontWeight: '800' },
+  prayerScheduleTime: { color: '#DDF2EA', fontSize: 13, marginTop: 4 },
+  homeSheet: { marginTop: -2, backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 26, paddingTop: 25, paddingBottom: 40 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  greetingLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 2 },
+  greetingName: { color: '#111A17', fontSize: 17, fontWeight: '900' },
+  greetingBadge: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: 15, paddingVertical: 7 },
+  greetingBadgeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '700' },
+  seeAllButton: { backgroundColor: colors.primarySoft, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  seeAllText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
+  liveScheduleCard: { padding: 13, borderColor: colors.primary, shadowOpacity: 0, elevation: 0 },
+  liveScheduleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  liveTimeBox: { minWidth: 54, alignItems: 'center', gap: 3 },
+  liveTimeText: { color: colors.textMuted, fontSize: 10 },
+  liveJoinButton: { backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 9 },
+  liveJoinText: { color: colors.white, fontSize: 11, fontWeight: '800' },
+  materialRowCard: { padding: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0 },
+  aiCta: { marginTop: 26, minHeight: 124, borderRadius: 16, padding: 17, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', gap: 13, overflow: 'hidden' },
+  aiCtaIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  aiCtaTitle: { color: colors.white, fontSize: 18, fontWeight: '900', marginBottom: 5 },
+  aiCtaText: { color: '#E2F3ED', fontSize: 12, lineHeight: 18 },
   liveHighlight: { borderColor: '#A7D7C6', backgroundColor: '#F6FCF9' },
   liveIcon: { width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   prayerCard: { backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -826,10 +910,10 @@ const styles = StyleSheet.create({
   prayerBadge: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   prayerBadgeText: { color: colors.white, fontWeight: '800' },
   muted: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'space-between' },
-  featureCard: { minWidth: 150, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, minHeight: 132, justifyContent: 'space-between', ...shadow.card },
-  featureIcon: { width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  featureTitle: { fontSize: 15, color: colors.text, fontWeight: '800' },
+  featureGrid: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+  featureCard: { flex: 1, minWidth: 45, alignItems: 'center', gap: 6 },
+  featureIcon: { width: 48, height: 48, borderRadius: 6, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  featureTitle: { fontSize: 9, lineHeight: 12, textAlign: 'center', color: colors.primaryDark, fontWeight: '600' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   rowGap: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   softIcon: { width: 46, height: 46, borderRadius: radius.md, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
@@ -837,7 +921,7 @@ const styles = StyleSheet.create({
   progressValue: { color: colors.primary, fontSize: 18, fontWeight: '800' },
   progressTrack: { height: 7, backgroundColor: colors.surfaceMuted, borderRadius: radius.pill, overflow: 'hidden', marginTop: spacing.md },
   progressFill: { height: '100%', backgroundColor: colors.primary },
-  videoThumb: { width: 74, height: 52, borderRadius: radius.sm, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  videoThumb: { width: 88, height: 60, borderRadius: 8, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
   searchField: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, minHeight: 50 },
   searchInput: { flex: 1, color: colors.text, fontSize: 15, outlineStyle: 'none' } as object,
   segment: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.md, padding: 4 },
@@ -891,14 +975,24 @@ const styles = StyleSheet.create({
   feedbackCorrect: { backgroundColor: colors.successSoft },
   feedbackWrong: { backgroundColor: colors.dangerSoft },
   feedbackWord: { color: colors.text, fontSize: 18, fontWeight: '700', writingDirection: 'rtl' },
-  authBrand: { alignItems: 'center', marginTop: 40, marginBottom: spacing.xl },
-  authLogo: { color: colors.primaryDark, fontSize: 34, fontWeight: '900', marginTop: 6 },
-  authTitle: { color: colors.text, fontSize: 26, fontWeight: '800', textAlign: 'center' },
-  authSubtitle: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.xl },
-  textField: { minHeight: 52, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, marginBottom: spacing.lg, color: colors.text, outlineStyle: 'none' } as object,
+  authPage: { minHeight: 820, backgroundColor: '#ECF8F1', paddingHorizontal: 24, paddingTop: 56, paddingBottom: 34 },
+  authBrand: { alignItems: 'center', marginBottom: 30 },
+  authLogoMark: { height: 62, alignItems: 'center', justifyContent: 'center' },
+  authLogo: { color: colors.primaryDark, fontSize: 34, fontWeight: '900', marginTop: 2, letterSpacing: -1 },
+  authTagline: { color: '#42514B', fontSize: 14, marginTop: 5 },
+  authPanel: { width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: colors.white, borderRadius: 36, paddingHorizontal: 32, paddingTop: 34, paddingBottom: 24, ...shadow.card },
+  authTitle: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  authSubtitle: { color: colors.textMuted, textAlign: 'center', fontSize: 13, lineHeight: 20, marginTop: spacing.sm, marginBottom: spacing.xl },
+  passwordLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  forgotPassword: { color: '#936B00', fontSize: 11, fontWeight: '800', marginBottom: 6 },
+  textField: { minHeight: 56, backgroundColor: '#F1F5F2', borderWidth: 1, borderColor: '#E2EAE6', borderRadius: 28, paddingHorizontal: 20, marginBottom: spacing.lg, color: colors.text, outlineStyle: 'none' } as object,
   formMessage: { color: colors.danger, marginBottom: spacing.md, lineHeight: 20 },
   authSwitch: { alignItems: 'center', padding: spacing.lg },
   authLink: { color: colors.primary, fontWeight: '800' },
+  authFooter: { width: '100%', maxWidth: 520, alignSelf: 'center', paddingTop: 35, gap: 10 },
+  authFooterBrand: { color: colors.primaryDark, fontSize: 18, fontWeight: '900' },
+  authFooterText: { color: colors.textMuted, fontSize: 12 },
+  authFooterLinks: { color: colors.textMuted, fontSize: 11, lineHeight: 20 },
   roleSelector: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.md, padding: 4, marginBottom: spacing.xl },
   roleOption: { flex: 1, alignItems: 'center', padding: spacing.md, borderRadius: radius.sm },
   roleOptionActive: { backgroundColor: colors.primary },

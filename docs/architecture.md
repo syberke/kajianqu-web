@@ -5,10 +5,10 @@
 | Kanal | Teknologi | Fokus |
 |---|---|---|
 | Mobile | Expo React Native + Expo Router | Pengalaman siswa dan asatidz, mikrofon, AI Quran, chat, notifikasi |
-| Web | Expo React Native Web + Expo Router | Web publik dan portal responsif admin, siswa, asatidz |
+| Web | Next.js App Router + Tailwind CSS | Web publik SEO-friendly dan portal responsif admin, siswa, asatidz |
 | Backend | Supabase | Auth, PostgreSQL, RLS, Storage, Realtime, Edge Functions |
 
-Keduanya memiliki deployment terpisah, tetapi memakai paket TypeScript, database, dan kontrak API yang sama.
+Keduanya memiliki deployment terpisah, tetapi memakai database dan kontrak bisnis yang sama. Komponen visual web dan mobile sengaja dipisahkan agar masing-masing mengikuti pola interaksi platformnya.
 
 ## Paket
 
@@ -16,7 +16,7 @@ Keduanya memiliki deployment terpisah, tetapi memakai paket TypeScript, database
 |---|---|
 | `design-tokens` | Warna hijau, emas, spacing, radius, shadow, breakpoint |
 | `ui-mobile` | Komponen serta layar universal React Native |
-| `ui-web` | Chrome navigasi dan footer khusus web, memakai layar universal |
+| `ui-web` | Paket komponen web bersama untuk pengembangan berikutnya |
 | `api-client` | Supabase, Quran.com API, pemanggilan Edge Function |
 | `schemas` | Validasi Zod dan tipe bersama |
 | `auth` | Permission matrix dan landing route |

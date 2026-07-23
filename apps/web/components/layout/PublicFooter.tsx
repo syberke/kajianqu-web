@@ -1,0 +1,80 @@
+import Link from 'next/link'
+
+const imgLogo       = "https://res.cloudinary.com/dyyvn5vla/image/upload/v1773101077/Logo_Bg_White-removebg-preview_wyr999.png"
+const imgWA         = "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+const imgIG         = "https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png"
+const imgGooglePlay = "https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+const imgAppStore   = "https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
+
+export default function PublicFooter() {
+  return (
+    <footer className="bg-white border-t border-gray-100 pt-16 md:pt-24 pb-10 px-6 relative z-20">
+      <div className="max-w-[1378px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 md:gap-16 pb-12 md:pb-20">
+
+        {/* Logo & Deskripsi */}
+        <div className="lg:col-span-4 space-y-6 md:space-y-8">
+          <img src={imgLogo} alt="KajianQu" className="h-14 md:h-16 lg:h-20 object-contain -ml-2 hover:scale-105 transition-transform duration-300" />
+          <p className="text-gray-500 text-[14px] md:text-[15px] leading-relaxed max-w-full md:max-w-[85%]">
+            KajianQu adalah platform islami terpadu untuk membaca Al-Qur&apos;an, doa, dan belajar Islam dengan mudah, nyaman, dan interaktif.
+          </p>
+          <div className="flex gap-4 pt-2">
+            <a href={process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/6282262170018'} target="_blank" rel="noreferrer" aria-label="WhatsApp KajianQu" className="w-11 h-11 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-all duration-300 group border border-gray-100 shadow-sm">
+              <img src={imgWA} alt="WhatsApp" className="w-5 h-5 object-contain group-hover:brightness-0 group-hover:invert transition-all" />
+            </a>
+            <a href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://www.instagram.com/kajian_qu/'} target="_blank" rel="noreferrer" aria-label="Instagram KajianQu" className="w-11 h-11 rounded-full bg-gray-50 flex items-center justify-center hover:bg-[#157a52] transition-all duration-300 group border border-gray-100 shadow-sm">
+              <img src={imgIG} alt="Instagram" className="w-5 h-5 object-contain group-hover:brightness-0 group-hover:invert transition-all" />
+            </a>
+          </div>
+        </div>
+
+        {/* Perusahaan */}
+        <div className="lg:col-span-2 space-y-6">
+          <h4 className="font-bold text-[#0c1421] text-[16px] uppercase tracking-wider">Perusahaan</h4>
+          <ul className="space-y-4">
+            <li><Link href="/welcome#tentang" className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">Tentang Kami</Link></li>
+            <li><Link href="/welcome#tentang" className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">Visi &amp; Misi</Link></li>
+            <li><Link href="/kelas" className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">Tim Asatidz</Link></li>
+            <li><Link href="/bantuan" className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">Kontak Kami</Link></li>
+          </ul>
+        </div>
+
+        {/* Program Kelas */}
+        <div className="lg:col-span-3 space-y-6">
+          <h4 className="font-bold text-[#0c1421] text-[16px] uppercase tracking-wider">Program Kelas</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <ul className="space-y-4">
+              {['Fiqih', 'Akhlak', 'Tahfidz'].map(l => (
+                <li key={l}><Link href={`/keilmuan?topik=${encodeURIComponent(l)}`} className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">{l}</Link></li>
+              ))}
+            </ul>
+            <ul className="space-y-4">
+              {['Akidah', 'Tafsir', 'Tajwid'].map(l => (
+                <li key={l}><Link href={`/keilmuan?topik=${encodeURIComponent(l)}`} className="text-gray-500 hover:text-[#157a52] text-[14px] font-medium transition-colors">{l}</Link></li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Download Aplikasi */}
+        <div className="lg:col-span-3 space-y-6">
+          <h4 className="font-bold text-[#0c1421] text-[16px] uppercase tracking-wider">Unduh Aplikasi</h4>
+          <p className="text-gray-500 text-[14px] leading-relaxed">Dapatkan pengalaman belajar yang lebih baik di smartphone Anda.</p>
+          <div className="flex flex-col gap-4">
+            <img src={imgGooglePlay} alt="Google Play" className="h-[45px] md:h-[52px] object-contain cursor-pointer hover:scale-105 hover:shadow-lg transition-all duration-300 rounded-xl" />
+            <img src={imgAppStore}   alt="App Store"   className="h-[45px] md:h-[52px] object-contain cursor-pointer hover:scale-105 hover:shadow-lg transition-all duration-300 rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Footer */}
+      <div className="max-w-[1378px] mx-auto pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+        <p className="text-gray-400 text-[14px]">© {new Date().getFullYear()} KajianQu. Hak Cipta Dilindungi.</p>
+        <div className="flex flex-wrap justify-center gap-6 md:gap-8 text-[14px]">
+          <Link href="/syarat-ketentuan" className="text-gray-400 hover:text-[#157a52] transition-colors font-medium">Syarat &amp; Ketentuan</Link>
+          <Link href="/kebijakan-privasi" className="text-gray-400 hover:text-[#157a52] transition-colors font-medium">Kebijakan Privasi</Link>
+          <Link href="/bantuan" className="text-gray-400 hover:text-[#157a52] transition-colors font-medium">Bantuan</Link>
+        </div>
+      </div>
+    </footer>
+  )
+}
