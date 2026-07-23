@@ -133,6 +133,11 @@ export function useGeminiLiveRecitation({
         recordedAudioRef.current = blob
         resolve(blob)
       }
+      try {
+        recorder.requestData()
+      } catch {
+        // Some browsers flush the final chunk automatically on stop.
+      }
       recorder.stop()
     })
   }, [])
@@ -300,9 +305,9 @@ export function useGeminiLiveRecitation({
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
         },
       })
       streamRef.current = stream
@@ -389,7 +394,7 @@ export function useGeminiLiveRecitation({
       }
 
       socketRef.current.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }))
-      stopTimerRef.current = setTimeout(() => void completeStop(), 2_500)
+      stopTimerRef.current = setTimeout(() => void completeStop(), 4_000)
     })
   }, [completeStop, isRecording])
 
