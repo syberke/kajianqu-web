@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
 
-export async function getCurrentUserProfile() {
+export const getCurrentUserProfile = cache(async () => {
   const supabase = await createClient()
   const {
     data: { user },
@@ -38,7 +39,7 @@ export async function getCurrentUserProfile() {
         }
       : null,
   }
-}
+})
 
 export async function requireAuth() {
   const result = await getCurrentUserProfile()

@@ -1,6 +1,8 @@
 import { requireRole } from '@/lib/helpers/auth'
 import AsatidzLayoutClient from './AsatidzLayoutClient'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AsatidzLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireRole('asatidz')
 

@@ -122,10 +122,14 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
     setErrorMessage(message)
     setStatus('error')
   }, [])
+  const handleLiveWarning = useCallback((message: string) => {
+    setErrorMessage(message)
+  }, [])
 
   const { isRecording, isConnecting, startRecording, stopRecording, resetTranscript } = useGeminiLiveRecitation({
     onTranscript: handleTranscript,
     onError: handleLiveError,
+    onWarning: handleLiveWarning,
   })
 
   const clearTimer = useCallback(() => {
@@ -263,15 +267,54 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
     }
   }, [ayahEnd, ayahStart, chapter.nameSimple, expectedText])
 
+  const requestTranscription = useCallback(async (recording: RecitationRecordingResult) => {
+    if (!recording.audioBlob) throw new Error('Browser tidak menghasilkan rekaman audio.')
+
+    const extension = recording.mimeType.includes('ogg') ? 'ogg' : 'webm'
+    const formData = new FormData()
+    formData.append('audio', recording.audioBlob, `quran-recitation.${extension}`)
+    formData.append('expectedText', expectedText)
+
+    const response = await fetch('/api/quran/recitation-transcription', {
+      method: 'POST',
+      body: formData,
+    })
+    const payload = (await response.json().catch(() => null)) as {
+      transcript?: string
+      error?: string
+    } | null
+    if (!response.ok || !payload?.transcript) {
+      throw new Error(payload?.error ?? 'Transkripsi rekaman gagal')
+    }
+    return payload.transcript
+  }, [expectedText])
+
   const stop = useCallback(async () => {
     clearTimer()
     setStatus('processing')
     const recording = await stopRecording()
-    const finalAlignment = alignRecitation(words, recording.transcript, true)
+    let finalRecording = recording
+
+    if (!recording.transcript && recording.audioBlob) {
+      setIsAnalyzing(true)
+      setAnalysisError('')
+      try {
+        const fallbackTranscript = await requestTranscription(recording)
+        finalRecording = { ...recording, transcript: fallbackTranscript }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Transkripsi rekaman gagal'
+        setAnalysisError(message)
+        setErrorMessage(message)
+      } finally {
+        setIsAnalyzing(false)
+      }
+    }
+
+    const finalAlignment = alignRecitation(words, finalRecording.transcript, true)
     const durationSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1_000))
 
-    setLastRecording(recording)
-    setTranscript(recording.transcript)
+    setLastRecording(finalRecording)
+    setTranscript(finalRecording.transcript)
     setAlignment(finalAlignment)
     setElapsedSeconds(durationSeconds)
     setIsSaving(true)
@@ -288,16 +331,16 @@ export default function QuranPracticeClient({ mode, chapter, verses, ayahStart, 
         accuracy: finalAlignment.accuracy,
         mistakes: finalAlignment.mistakes,
         durationSeconds,
-        transcript: recording.transcript,
+        transcript: finalRecording.transcript,
       }),
     ]
-    if (mode === 'belajar') tasks.push(requestAnalysis(recording))
+    if (mode === 'belajar') tasks.push(requestAnalysis(finalRecording))
     await Promise.allSettled(tasks)
 
     setIsSaving(false)
     setLearningStep('done')
     setStatus('done')
-  }, [ayahEnd, ayahStart, chapter.id, chapter.nameSimple, clearTimer, mode, requestAnalysis, stopRecording, words])
+  }, [ayahEnd, ayahStart, chapter.id, chapter.nameSimple, clearTimer, mode, requestAnalysis, requestTranscription, stopRecording, words])
 
   const effectiveStatus: PracticeStatus = isConnecting ? 'connecting' : isRecording ? 'recording' : status
   const isDone = effectiveStatus === 'done'

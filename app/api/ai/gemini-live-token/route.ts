@@ -1,7 +1,7 @@
 import { GoogleGenAI, Modality } from '@google/genai'
 import { NextResponse } from 'next/server'
 
-import { GEMINI_LIVE_MODEL, GEMINI_LIVE_SYSTEM_INSTRUCTION } from '@/lib/gemini-live-config'
+import { DEFAULT_GEMINI_LIVE_MODEL, GEMINI_LIVE_SYSTEM_INSTRUCTION } from '@/lib/gemini-live-config'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
 
@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     )
   }
 
+  const model = process.env.GEMINI_LIVE_MODEL || DEFAULT_GEMINI_LIVE_MODEL
+
   try {
     const client = new GoogleGenAI({
       apiKey,
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
         expireTime,
         newSessionExpireTime,
         liveConnectConstraints: {
-          model: GEMINI_LIVE_MODEL,
+          model,
           config: {
             responseModalities: [Modality.AUDIO],
             inputAudioTranscription: {},
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       token: token.name,
-      model: GEMINI_LIVE_MODEL,
+      model,
     })
   } catch (error) {
     console.error('Failed to create Gemini Live ephemeral token', error)
