@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai'
 import { NextResponse } from 'next/server'
 
+import { DEFAULT_GEMINI_ANALYSIS_MODEL } from '@/lib/gemini-live-config'
 import { createClient } from '@/lib/supabase/server'
 import type { QuranRecitationAnalysis } from '@/types/quran'
 import { checkRateLimit, requestIdentity } from '@/lib/security/rate-limit'
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     const audioData = Buffer.from(await audio.arrayBuffer()).toString('base64')
     const client = new GoogleGenAI({ apiKey })
     const response = await client.models.generateContent({
-      model: process.env.GEMINI_ANALYSIS_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_ANALYSIS_MODEL || DEFAULT_GEMINI_ANALYSIS_MODEL,
       contents: [
         {
           role: 'user',

@@ -79,11 +79,13 @@ DATABASE_URL=
 DIRECT_URL=
 
 GEMINI_API_KEY=
+NEXT_PUBLIC_GEMINI_LIVE_ENABLED=false
 
 # Optional / defaults
 QURAN_API_BASE_URL=https://api.quran.com/api/v4
 QURAN_FALLBACK_API_BASE_URL=https://api.alquran.cloud/v1
 QURAN_RECITATION_ID=1
+GEMINI_LIVE_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
 GEMINI_ANALYSIS_MODEL=gemini-2.5-flash
 
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -92,7 +94,9 @@ NEXT_PUBLIC_WHATSAPP_URL=https://wa.me/6282262170018
 NEXT_PUBLIC_INSTAGRAM_URL=https://www.instagram.com/kajian_qu/
 ```
 
-`GEMINI_API_KEY` harus tetap server-side. Browser menerima ephemeral token berumur pendek untuk Gemini Live, bukan long-lived API key.
+`GEMINI_API_KEY` harus tetap server-side. Browser menerima ephemeral token berumur pendek untuk Gemini Live, bukan long-lived API key. Kedua model default di atas tersedia pada free tier Gemini Developer API, tetap dengan batas kuota akun Google AI Studio.
+
+Gunakan `NEXT_PUBLIC_GEMINI_LIVE_ENABLED=false` bila jaringan WebSocket Live tidak stabil. Dalam mode ini browser merekam audio secara lokal, lalu server mentranskripsikan dan menganalisis rekaman memakai model HTTP biasa. Ubah ke `true` untuk mencoba transkripsi Live kembali.
 
 `QURAN_RECITATION_ID` adalah ID recitation ayah-by-ayah yang dikirim ke Quran Foundation API untuk audio contoh mode Belajar Al-Qur'an. Bila tidak diisi, aplikasi menggunakan ID `1`.
 
@@ -108,12 +112,14 @@ npm run dev
 
 Supabase dipakai untuk PostgreSQL, Auth, dan Storage. Prisma adalah ORM server-side. Sumber kebenaran perubahan schema berada di `supabase/migrations`, bukan di `prisma/migrations`.
 
-Untuk Supabase, gunakan pooler URL untuk runtime dan direct connection untuk operasi schema:
+Untuk local Windows atau server persisten yang hanya memiliki IPv4, gunakan Session Pooler gratis pada port `5432` untuk runtime dan operasi schema:
 
 ```env
-DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require
-DIRECT_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_URL=postgresql://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@REGION.pooler.supabase.com:5432/postgres?sslmode=require&connection_limit=5&pool_timeout=30&connect_timeout=30
+DIRECT_URL=postgresql://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@REGION.pooler.supabase.com:5432/postgres?sslmode=require&pool_timeout=30&connect_timeout=30
 ```
+
+Untuk deployment serverless, `DATABASE_URL` dapat memakai Transaction Pooler port `6543` dengan `pgbouncer=true&connection_limit=1&pool_timeout=30&connect_timeout=30`. Pertahankan `DIRECT_URL` pada Session Pooler port `5432` bila host migration hanya mendukung IPv4.
 
 Jangan commit password database atau `SUPABASE_SERVICE_ROLE_KEY`.
 

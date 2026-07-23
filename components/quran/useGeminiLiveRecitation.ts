@@ -16,11 +16,13 @@ interface GeminiServerMessage {
     turnComplete?: boolean
   }
   goAway?: { timeLeft?: string }
+  error?: { code?: number; message?: string; status?: string }
 }
 
 interface UseGeminiLiveRecitationOptions {
   onTranscript: (transcript: string) => void
   onError: (message: string) => void
+  onWarning?: (message: string) => void
 }
 
 export interface RecitationRecordingResult {
@@ -32,6 +34,7 @@ export interface RecitationRecordingResult {
 const LIVE_ENDPOINT =
   'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'
 const TARGET_SAMPLE_RATE = 16_000
+const LIVE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_ENABLED === 'true'
 
 function mergeTranscript(current: string, incoming: string): string {
   const next = incoming.trim()
@@ -98,6 +101,7 @@ function getPreferredRecordingMimeType(): string {
 export function useGeminiLiveRecitation({
   onTranscript,
   onError,
+  onWarning,
 }: UseGeminiLiveRecitationOptions) {
   const [isRecording, setIsRecording] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -113,6 +117,7 @@ export function useGeminiLiveRecitation({
   const resolveStopRef = useRef<((result: RecitationRecordingResult) => void) | null>(null)
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const finishingRef = useRef(false)
+  const expectedCloseRef = useRef(false)
 
   const stopMediaRecorder = useCallback(async (): Promise<Blob | null> => {
     const recorder = mediaRecorderRef.current
@@ -159,6 +164,7 @@ export function useGeminiLiveRecitation({
     const audioBlob = await stopMediaRecorder().catch(() => recordedAudioRef.current)
     const mimeType = audioBlob?.type || mediaRecorderRef.current?.mimeType || 'audio/webm'
     await cleanupAudio()
+    expectedCloseRef.current = true
     socketRef.current?.close(1000, 'recitation finished')
     socketRef.current = null
     setIsRecording(false)
@@ -179,69 +185,117 @@ export function useGeminiLiveRecitation({
     audioChunksRef.current = []
     recordedAudioRef.current = null
     finishingRef.current = false
+    expectedCloseRef.current = false
     onTranscript('')
 
     try {
-      const tokenResponse = await fetch('/api/ai/gemini-live-token', {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-      })
+      if (LIVE_ENABLED) {
+        try {
+          const tokenResponse = await fetch('/api/ai/gemini-live-token', {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+          })
 
-      if (!tokenResponse.ok) {
-        const payload = (await tokenResponse.json().catch(() => null)) as { error?: string } | null
-        throw new Error(payload?.error ?? 'Tidak bisa membuka sesi Gemini Live')
+          if (!tokenResponse.ok) {
+            const payload = (await tokenResponse.json().catch(() => null)) as { error?: string } | null
+            throw new Error(payload?.error ?? 'Tidak bisa membuka sesi Gemini Live')
+          }
+
+          const { token, model } = (await tokenResponse.json()) as GeminiLiveTokenResponse
+          const socket = new WebSocket(`${LIVE_ENDPOINT}?access_token=${encodeURIComponent(token)}`)
+          socketRef.current = socket
+
+          await new Promise<void>((resolve, reject) => {
+            let setupFinished = false
+            const setupTimeout = setTimeout(
+              () => reject(new Error('Gemini Live tidak merespons dalam 20 detik. Periksa akses model dan jaringan.')),
+              20_000,
+            )
+
+            socket.onopen = () => {
+              socket.send(
+                JSON.stringify({
+                  setup: {
+                    model: `models/${model}`,
+                    responseModalities: ['AUDIO'],
+                    inputAudioTranscription: {},
+                    systemInstruction: {
+                      parts: [{ text: GEMINI_LIVE_SYSTEM_INSTRUCTION }],
+                    },
+                  },
+                }),
+              )
+            }
+
+            socket.onmessage = (event) => {
+              try {
+                const message = JSON.parse(String(event.data)) as GeminiServerMessage
+                if (message.error) {
+                  clearTimeout(setupTimeout)
+                  reject(
+                    new Error(
+                      message.error.message ||
+                        `Gemini Live menolak sesi${message.error.code ? ` (${message.error.code})` : ''}`,
+                    ),
+                  )
+                  return
+                }
+
+                if (message.setupComplete) {
+                  setupFinished = true
+                  clearTimeout(setupTimeout)
+                  resolve()
+                  return
+                }
+
+                const text = message.serverContent?.inputTranscription?.text
+                if (text) {
+                  transcriptRef.current = mergeTranscript(transcriptRef.current, text)
+                  onTranscript(transcriptRef.current)
+                }
+
+                if (message.serverContent?.turnComplete && resolveStopRef.current) {
+                  void completeStop()
+                }
+              } catch {
+                clearTimeout(setupTimeout)
+                reject(new Error('Respons Gemini Live tidak valid'))
+              }
+            }
+
+            socket.onerror = () => {
+              clearTimeout(setupTimeout)
+              reject(new Error('Koneksi WebSocket Gemini Live gagal'))
+            }
+
+            socket.onclose = (event) => {
+              clearTimeout(setupTimeout)
+              const detail = event.reason ? `: ${event.reason}` : ` (kode ${event.code})`
+
+              if (!setupFinished) {
+                reject(new Error(`Koneksi Gemini Live ditutup sebelum siap${detail}`))
+                return
+              }
+
+              if (expectedCloseRef.current) return
+              if (resolveStopRef.current) {
+                void completeStop()
+                return
+              }
+
+              void completeStop().finally(() => {
+                onError(`Koneksi Gemini Live terputus${detail}`)
+              })
+            }
+          })
+        } catch (liveError) {
+          expectedCloseRef.current = true
+          socketRef.current?.close()
+          socketRef.current = null
+          const message = liveError instanceof Error ? liveError.message : 'Gemini Live tidak tersedia'
+          onWarning?.(`${message} Rekaman lokal tetap berjalan dan akan dianalisis setelah selesai.`)
+        }
       }
-
-      const { token, model } = (await tokenResponse.json()) as GeminiLiveTokenResponse
-      const socket = new WebSocket(`${LIVE_ENDPOINT}?access_token=${encodeURIComponent(token)}`)
-      socketRef.current = socket
-
-      await new Promise<void>((resolve, reject) => {
-        const setupTimeout = setTimeout(() => reject(new Error('Gemini Live tidak merespons')), 12_000)
-
-        socket.onopen = () => {
-          socket.send(
-            JSON.stringify({
-              setup: {
-                model: `models/${model}`,
-                responseModalities: ['AUDIO'],
-                inputAudioTranscription: {},
-                systemInstruction: {
-                  parts: [{ text: GEMINI_LIVE_SYSTEM_INSTRUCTION }],
-                },
-              },
-            }),
-          )
-        }
-
-        socket.onmessage = (event) => {
-          const message = JSON.parse(String(event.data)) as GeminiServerMessage
-          if (message.setupComplete) {
-            clearTimeout(setupTimeout)
-            resolve()
-            return
-          }
-
-          const text = message.serverContent?.inputTranscription?.text
-          if (text) {
-            transcriptRef.current = mergeTranscript(transcriptRef.current, text)
-            onTranscript(transcriptRef.current)
-          }
-
-          if (message.serverContent?.turnComplete && resolveStopRef.current) {
-            void completeStop()
-          }
-        }
-
-        socket.onerror = () => {
-          clearTimeout(setupTimeout)
-          reject(new Error('Koneksi WebSocket Gemini Live gagal'))
-        }
-
-        socket.onclose = () => {
-          if (resolveStopRef.current) void completeStop()
-        }
-      })
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -298,6 +352,7 @@ export function useGeminiLiveRecitation({
         mediaRecorderRef.current.stop()
       }
       await cleanupAudio()
+      expectedCloseRef.current = true
       socketRef.current?.close()
       socketRef.current = null
       setIsConnecting(false)
@@ -311,10 +366,10 @@ export function useGeminiLiveRecitation({
       }
       return false
     }
-  }, [cleanupAudio, completeStop, isConnecting, isRecording, onError, onTranscript])
+  }, [cleanupAudio, completeStop, isConnecting, isRecording, onError, onTranscript, onWarning])
 
   const stopRecording = useCallback(async (): Promise<RecitationRecordingResult> => {
-    if (!socketRef.current || !isRecording) {
+    if (!isRecording) {
       return {
         transcript: transcriptRef.current,
         audioBlob: recordedAudioRef.current,
@@ -328,7 +383,12 @@ export function useGeminiLiveRecitation({
 
     return new Promise<RecitationRecordingResult>((resolve) => {
       resolveStopRef.current = resolve
-      socketRef.current?.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }))
+      if (!socketRef.current) {
+        void completeStop()
+        return
+      }
+
+      socketRef.current.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }))
       stopTimerRef.current = setTimeout(() => void completeStop(), 2_500)
     })
   }, [completeStop, isRecording])
