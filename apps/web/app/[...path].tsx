@@ -1,7 +1,6 @@
-import { useLocalSearchParams } from 'expo-router'
-import { PlaceholderScreen } from '@kajianku/ui-web'
+import { router } from 'expo-router'
+import { NotFoundScreen } from '@kajianku/ui-web'
 
 export default function CatchAllPage() {
-  const { path } = useLocalSearchParams<{ path?: string[] }>()
-  return <PlaceholderScreen title={(path || []).join(' / ') || 'Halaman'} />
+  return <NotFoundScreen navigate={(href) => router.replace(href as never)} />
 }
