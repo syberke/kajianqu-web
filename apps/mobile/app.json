@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "KajianQu",
+    "slug": "kajianku-mobile",
+    "scheme": "kajianku",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Izinkan KajianQu memakai mikrofon untuk latihan bacaan Al-Qur'an.",
+          "enableBackgroundRecording": false
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "id.kajianku.mobile"
+    },
+    "android": {
+      "package": "id.kajianku.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#157A52"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

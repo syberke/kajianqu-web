@@ -1,2 +1,4 @@
+project_id = "zqubndojitbslbbblllo"
 
-project_id = "kajianqu-web"
+[functions.quran-transcribe]
+verify_jwt = true

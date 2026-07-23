@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "KajianQu Web",
+    "slug": "kajianku-web-rn",
+    "scheme": "kajianku-web",
+    "version": "1.0.0",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Izinkan KajianQu memakai mikrofon untuk latihan bacaan Al-Qur'an.",
+          "enableBackgroundRecording": false
+        }
+      ]
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
