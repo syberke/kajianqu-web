@@ -1,9 +1,9 @@
 # KajianQu Platform
 
-Monorepo KajianQu dengan dua frontend React Native yang benar-benar terpisah:
+Monorepo KajianQu dengan frontend web dan mobile yang terpisah:
 
 - `apps/mobile`: Expo React Native untuk Android dan iOS.
-- `apps/web`: Expo React Native Web dengan Expo Router dan static export.
+- `apps/web`: Next.js App Router untuk web publik dan dashboard admin, siswa, serta asatidz.
 - `packages/*`: design tokens, UI, schema, auth, API client, dan Quran core yang dipakai bersama.
 - `supabase/*`: migration, seed, RLS, Storage, dan Edge Function.
 
@@ -26,11 +26,11 @@ Hasil AI hanya bantuan latihan dan bukan pengganti validasi asatidz.
 
 ```bash
 npm install
-cp .env.example apps/mobile/.env
-cp .env.example apps/web/.env
+cp apps/web/.env.example apps/web/.env.local
+cp apps/mobile/.env.example apps/mobile/.env
 ```
 
-Isi publishable key pada kedua `.env`:
+Untuk mobile, isi publishable key:
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://zqubndojitbslbbblllo.supabase.co
@@ -38,6 +38,17 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 ```
 
 Jangan pernah menaruh secret key atau service role key pada environment `EXPO_PUBLIC_*`.
+
+Untuk web Next.js, isi sekurangnya:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://zqubndojitbslbbblllo.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+DATABASE_URL=...
+DIRECT_URL=...
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` dan `GEMINI_API_KEY` hanya boleh tersedia pada environment server.
 
 ## Menjalankan
 
@@ -53,14 +64,16 @@ Web:
 npm run dev:web
 ```
 
-Build web statis:
+Web berjalan di `http://localhost:3000`.
+
+Build web Next.js:
 
 ```bash
 npm run build:web
 ```
 
-Vercel membaca `vercel.json` di root dan menerbitkan hasil static export
-`apps/web/dist`.
+Vercel membaca `vercel.json` di root dan menerbitkan build Next.js dari
+`apps/web/.next`.
 
 Pemeriksaan lengkap:
 

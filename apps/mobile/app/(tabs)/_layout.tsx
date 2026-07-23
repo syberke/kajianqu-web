@@ -8,17 +8,18 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          height: 76,
-          paddingTop: 8,
-          paddingBottom: 10,
-          borderTopColor: colors.border,
+          height: 78,
+          paddingTop: 9,
+          paddingBottom: 11,
+          borderTopColor: '#D8E1DD',
           borderTopWidth: 1,
           backgroundColor: colors.surface,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Beranda', tabBarIcon: ({ color }) => <Home color={color} size={22} /> }} />
@@ -27,8 +28,9 @@ export default function TabLayout() {
         name="ai-quran"
         options={{
           title: 'AI Quran',
+          tabBarLabel: () => null,
           tabBarIcon: () => (
-            <View style={{ width: 54, height: 54, marginTop: -24, borderRadius: 27, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: colors.surface }}>
+            <View style={{ width: 58, height: 58, marginTop: -22, borderRadius: 29, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: colors.surface }}>
               <Bot color={colors.white} size={25} />
             </View>
           ),

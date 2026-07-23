@@ -9,14 +9,17 @@
   "scripts": {
     "dev:mobile": "npm run start --workspace @kajianku/mobile",
     "dev:web": "npm run start --workspace @kajianku/web",
-    "web": "npm run web --workspace @kajianku/web",
+    "web": "npm run start --workspace @kajianku/web",
     "android": "npm run android --workspace @kajianku/mobile",
     "ios": "npm run ios --workspace @kajianku/mobile",
     "build:web": "npm run build:web --workspace @kajianku/web",
+    "lint:web": "npm run lint --workspace @kajianku/web",
+    "db:generate": "npm run db:generate --workspace @kajianku/web",
+    "db:validate": "npm run db:validate --workspace @kajianku/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run test && npm run build:web"
+    "check": "npm run typecheck && npm run test && npm run lint:web && npm run build:web"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
