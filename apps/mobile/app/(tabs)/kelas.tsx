@@ -1,5 +1,6 @@
-import { PlaceholderScreen } from '@kajianku/ui-mobile'
+import { router } from 'expo-router'
+import { PrivateClassesScreen } from '@kajianku/ui-mobile'
 
 export default function KelasPage() {
-  return <PlaceholderScreen title="Kelas private" description="Jadwal, pertemuan, materi pendukung, dan chat kelas tampil di sini." />
+  return <PrivateClassesScreen navigate={(href) => router.push(href as never)} />
 }
