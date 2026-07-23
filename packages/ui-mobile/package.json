@@ -1,0 +1,20 @@
+{
+  "name": "@kajianku/ui-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "dependencies": {
+    "@kajianku/api-client": "*",
+    "@kajianku/design-tokens": "*",
+    "@kajianku/quran-core": "*",
+    "@kajianku/schemas": "*",
+    "@tanstack/react-query": "5.101.4",
+    "lucide-react-native": "1.26.0"
+  },
+  "peerDependencies": {
+    "expo-audio": ">=56",
+    "react": ">=19",
+    "react-native": ">=0.82"
+  }
+}

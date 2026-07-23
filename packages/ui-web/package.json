@@ -1,0 +1,16 @@
+{
+  "name": "@kajianku/ui-web",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "dependencies": {
+    "@kajianku/design-tokens": "*",
+    "@kajianku/ui-mobile": "*",
+    "lucide-react-native": "1.26.0"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-native": ">=0.82"
+  }
+}
