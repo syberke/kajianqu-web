@@ -64,6 +64,9 @@ export default function WelcomeClient({ userProfile }: Props) {
   const [donasiOpen, setDonasiOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const desktopMenusRef = useRef<HTMLDivElement>(null)
+  const fiturCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const donasiCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [showPopup, setShowPopup] = useState(false)
   const [selectedNominal, setSelected] = useState<number | null>(null)
@@ -86,14 +89,56 @@ export default function WelcomeClient({ userProfile }: Props) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => () => {
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+  }, [])
+
+  const openFitur = () => {
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+    setDonasiOpen(false)
+    setFiturOpen(true)
+  }
+
+  const closeFitur = () => {
+    fiturCloseTimer.current = setTimeout(() => setFiturOpen(false), 180)
+  }
+
+  const openDonasi = () => {
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    setFiturOpen(false)
+    setDonasiOpen(true)
+  }
+
+  const closeDonasi = () => {
+    donasiCloseTimer.current = setTimeout(() => setDonasiOpen(false), 180)
+  }
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
       }
+      if (desktopMenusRef.current && !desktopMenusRef.current.contains(e.target as Node)) {
+        setFiturOpen(false)
+        setDonasiOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFiturOpen(false)
+        setDonasiOpen(false)
+        setProfileOpen(false)
+      }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   const handleLogout = async () => {
@@ -156,35 +201,40 @@ export default function WelcomeClient({ userProfile }: Props) {
             <img src={imgLogoWhite} alt="KajianQu" className="h-12 md:h-14 w-auto object-contain cursor-pointer" />
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 lg:gap-10">
+          <div ref={desktopMenusRef} className="hidden md:flex items-center gap-8 lg:gap-10">
             <Link href="/" className="text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors">Beranda</Link>
 
             {/* Fitur dropdown */}
-            <div className="relative" onMouseEnter={() => setFiturOpen(true)} onMouseLeave={() => setFiturOpen(false)}>
-              <button className="flex items-center gap-2 text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors focus:outline-none">
+            <div className="relative" onMouseEnter={openFitur} onMouseLeave={closeFitur}>
+              <button type="button" aria-haspopup="menu" aria-expanded={fiturOpen} onClick={() => setFiturOpen((open) => !open)} className="flex items-center gap-2 text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors focus:outline-none">
                 Fitur <ChevronDown size={16} className={`transition-transform ${fiturOpen ? 'rotate-180' : ''}`} />
               </button>
               {fiturOpen && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 z-50">
-                  <Link href="/sahabat-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sahabat Qur&apos;an</Link>
-                  <Link href="/keilmuan" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Keilmuan</Link>
+                <div className="absolute top-full left-0 z-50 w-56 pt-2" role="menu">
+                  <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
+                    <Link role="menuitem" href="/sahabat-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sahabat Qur&apos;an</Link>
+                    <Link role="menuitem" href="/keilmuan" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Keilmuan</Link>
+                  </div>
                 </div>
               )}
             </div>
 
             <Link href="/kelas" className="text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors">Kelas</Link>
+            <Link href="/ustadz" className="text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors">Ustadz</Link>
 
             {/* Donasi dropdown */}
-            <div className="relative" onMouseEnter={() => setDonasiOpen(true)} onMouseLeave={() => setDonasiOpen(false)}>
-              <button className="flex items-center gap-2 text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors focus:outline-none">
+            <div className="relative" onMouseEnter={openDonasi} onMouseLeave={closeDonasi}>
+              <button type="button" aria-haspopup="menu" aria-expanded={donasiOpen} onClick={() => setDonasiOpen((open) => !open)} className="flex items-center gap-2 text-white text-[15px] font-medium hover:text-[#d3ad0f] transition-colors focus:outline-none">
                 Donasi <ChevronDown size={16} className={`transition-transform ${donasiOpen ? 'rotate-180' : ''}`} />
               </button>
               {donasiOpen && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 z-50">
-                  <Link href="/donasi/infaq-asatidz" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Infaq Asatidz</Link>
-                  <Link href="/donasi/sodaqoh" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sodaqoh</Link>
-                  <Link href="/donasi/wakaf-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Wakaf Al-Qur&apos;an</Link>
-                  <Link href="/donasi/katalog-produk" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Katalog Produk</Link>
+                <div className="absolute top-full left-0 z-50 w-56 pt-2" role="menu">
+                  <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
+                    <Link role="menuitem" href="/donasi/infaq-asatidz" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Infaq Asatidz</Link>
+                    <Link role="menuitem" href="/donasi/sodaqoh" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Sodaqoh</Link>
+                    <Link role="menuitem" href="/donasi/wakaf-quran" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Wakaf Al-Qur&apos;an</Link>
+                    <Link role="menuitem" href="/donasi/katalog-produk" className="block px-5 py-3 text-[14px] text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors">Katalog Produk</Link>
+                  </div>
                 </div>
               )}
             </div>

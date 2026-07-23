@@ -42,12 +42,13 @@ export default function AsatidzLayoutClient({
           <span className="font-black text-2xl text-[#064E3B] tracking-tighter">KajianQu</span>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto px-4 space-y-2">
           <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard"      href="/dashboard/asatidz"          active={pathname === '/dashboard/asatidz'} />
           <SidebarItem icon={<BookOpen size={20} />}       label="Keilmuan"        href="/dashboard/asatidz/keilmuan" active={pathname.includes('/keilmuan')} />
           <SidebarItem icon={<Video size={20} />}          label="Live Streaming"  href="/dashboard/asatidz/live"     active={pathname.includes('/live')} />
           <SidebarItem icon={<Users size={20} />}          label="Kelas Private"   href="/dashboard/asatidz/private"  active={pathname.includes('/private')} />
           <SidebarItem icon={<MessageSquare size={20} />}  label="Chat"            href="/dashboard/asatidz/chat"     active={pathname.includes('/chat')} />
+          <SidebarItem icon={<Bell size={20} />}           label="Notifikasi"      href="/dashboard/asatidz/notifications" active={pathname.includes('/notifications')} />
           <SidebarItem icon={<Users size={20} />}          label="Profile"         href="/dashboard/asatidz/profile"  active={pathname.includes('/profile')} />
         </nav>
 
@@ -73,7 +74,7 @@ export default function AsatidzLayoutClient({
             />
           </div>
           <div className="flex items-center gap-6">
-            <button className="p-2 text-gray-400"><Bell size={20} /></button>
+            <Link href="/dashboard/asatidz/notifications" aria-label="Buka notifikasi" className="p-2 text-gray-400"><Bell size={20} /></Link>
             <div className="flex items-center gap-3 border-l pl-6">
               <div className="text-right">
                 <p className="text-xs font-black text-emerald-950">{profile?.nama || 'Ustadz'}</p>

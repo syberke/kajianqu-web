@@ -42,6 +42,9 @@ export default function PublicNavbar({ userProfile }: Props) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const desktopMenusRef = useRef<HTMLDivElement>(null)
+  const fiturCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const donasiCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const firstName = userProfile?.nama?.split(' ')[0] || 'User'
   const initial = userProfile?.nama?.charAt(0).toUpperCase() || 'U'
@@ -52,14 +55,57 @@ export default function PublicNavbar({ userProfile }: Props) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => () => {
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+  }, [])
+
+  const openFitur = () => {
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+    setDonasiOpen(false)
+    setFiturOpen(true)
+  }
+
+  const closeFitur = () => {
+    fiturCloseTimer.current = setTimeout(() => setFiturOpen(false), 180)
+  }
+
+  const openDonasi = () => {
+    if (donasiCloseTimer.current) clearTimeout(donasiCloseTimer.current)
+    if (fiturCloseTimer.current) clearTimeout(fiturCloseTimer.current)
+    setFiturOpen(false)
+    setDonasiOpen(true)
+  }
+
+  const closeDonasi = () => {
+    donasiCloseTimer.current = setTimeout(() => setDonasiOpen(false), 180)
+  }
+
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false)
       }
+      if (desktopMenusRef.current && !desktopMenusRef.current.contains(event.target as Node)) {
+        setFiturOpen(false)
+        setDonasiOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFiturOpen(false)
+        setDonasiOpen(false)
+        setProfileOpen(false)
+        setMobileOpen(false)
+      }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   const handleLogout = async () => {
@@ -75,23 +121,25 @@ export default function PublicNavbar({ userProfile }: Props) {
           <img src={imgLogo} alt="KajianQu" className="h-12 md:h-14 w-auto object-contain hover:scale-105 transition-transform" />
         </Link>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div ref={desktopMenusRef} className="hidden md:flex items-center gap-8">
           <Link href="/welcome" className={`text-sm font-medium transition-colors ${pathname === '/welcome' ? 'text-[#d3ad0f]' : 'text-white hover:text-[#d3ad0f]'}`}>
             Beranda
           </Link>
 
-          <div className="relative" onMouseEnter={() => setFiturOpen(true)} onMouseLeave={() => setFiturOpen(false)}>
-            <button className="flex items-center gap-1.5 text-sm font-medium text-white hover:text-[#d3ad0f] transition-colors">
+          <div className="relative" onMouseEnter={openFitur} onMouseLeave={closeFitur}>
+            <button type="button" aria-haspopup="menu" aria-expanded={fiturOpen} onClick={() => setFiturOpen((open) => !open)} className="flex items-center gap-1.5 text-sm font-medium text-white hover:text-[#d3ad0f] transition-colors">
               Fitur <ChevronDown size={14} className={`transition-transform ${fiturOpen ? 'rotate-180' : ''}`} />
             </button>
             {fiturOpen && (
-              <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                <Link href={isLoggedIn ? '/quran-ai' : '/welcome'} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setFiturOpen(false)}>
-                  Quran AI
-                </Link>
-                <Link href={isLoggedIn ? '/keilmuan' : '/welcome'} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setFiturOpen(false)}>
-                  Keilmuan
-                </Link>
+              <div className="absolute top-full left-0 z-50 w-52 pt-2" role="menu">
+                <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
+                  <Link role="menuitem" href={isLoggedIn ? '/quran-ai' : '/welcome'} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setFiturOpen(false)}>
+                    Quran AI
+                  </Link>
+                  <Link role="menuitem" href={isLoggedIn ? '/keilmuan' : '/welcome'} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setFiturOpen(false)}>
+                    Keilmuan
+                  </Link>
+                </div>
               </div>
             )}
           </div>
@@ -100,22 +148,28 @@ export default function PublicNavbar({ userProfile }: Props) {
             Kelas
           </Link>
 
-          <div className="relative" onMouseEnter={() => setDonasiOpen(true)} onMouseLeave={() => setDonasiOpen(false)}>
-            <button className="flex items-center gap-1.5 text-sm font-medium text-white hover:text-[#d3ad0f] transition-colors">
+          <Link href="/ustadz" className={`text-sm font-medium transition-colors ${pathname.startsWith('/ustadz') ? 'text-[#d3ad0f]' : 'text-white hover:text-[#d3ad0f]'}`}>
+            Ustadz
+          </Link>
+
+          <div className="relative" onMouseEnter={openDonasi} onMouseLeave={closeDonasi}>
+            <button type="button" aria-haspopup="menu" aria-expanded={donasiOpen} onClick={() => setDonasiOpen((open) => !open)} className="flex items-center gap-1.5 text-sm font-medium text-white hover:text-[#d3ad0f] transition-colors">
               Donasi <ChevronDown size={14} className={`transition-transform ${donasiOpen ? 'rotate-180' : ''}`} />
             </button>
             {donasiOpen && (
-              <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                {[
-                  { label: "Wakaf Al-Qur'an", href: '/donasi/wakaf-quran' },
-                  { label: 'Sodaqoh Jariyah', href: '/donasi/sodaqoh' },
-                  { label: 'Infaq Asatidz', href: '/donasi/infaq-asatidz' },
-                  { label: 'Katalog Produk', href: '/donasi/katalog-produk' },
-                ].map((item) => (
-                  <Link key={item.href} href={item.href} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setDonasiOpen(false)}>
-                    {item.label}
-                  </Link>
-                ))}
+              <div className="absolute top-full left-0 z-50 w-52 pt-2" role="menu">
+                <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
+                  {[
+                    { label: "Wakaf Al-Qur'an", href: '/donasi/wakaf-quran' },
+                    { label: 'Sodaqoh Jariyah', href: '/donasi/sodaqoh' },
+                    { label: 'Infaq Asatidz', href: '/donasi/infaq-asatidz' },
+                    { label: 'Katalog Produk', href: '/donasi/katalog-produk' },
+                  ].map((item) => (
+                    <Link role="menuitem" key={item.href} href={item.href} className="block px-5 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-[#1a7a53] font-medium transition-colors" onClick={() => setDonasiOpen(false)}>
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -124,7 +178,7 @@ export default function PublicNavbar({ userProfile }: Props) {
         <div className="flex items-center gap-3">
           {isLoggedIn ? (
             <div className="relative" ref={profileRef}>
-              <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-all px-3.5 py-2 rounded-full">
+              <button type="button" aria-expanded={profileOpen} aria-label="Buka menu profil" onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-all px-3.5 py-2 rounded-full">
                 <div className="w-8 h-8 rounded-full bg-[#d3ad0f] flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
                   {userProfile?.foto_url ? <img src={userProfile.foto_url} alt={firstName} className="w-full h-full object-cover" /> : <span>{initial}</span>}
                 </div>
@@ -158,7 +212,7 @@ export default function PublicNavbar({ userProfile }: Props) {
             </Link>
           )}
 
-          <button className="md:hidden text-white p-1.5 ml-2" onClick={() => setMobileOpen(!mobileOpen)}>
+          <button type="button" aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Tutup menu' : 'Buka menu'} className="md:hidden text-white p-1.5 ml-2" onClick={() => setMobileOpen(!mobileOpen)}>
             <div className={`w-5 h-0.5 bg-white mb-1 transition-all ${mobileOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
             <div className={`w-5 h-0.5 bg-white mb-1 transition-all ${mobileOpen ? 'opacity-0' : ''}`} />
             <div className={`w-5 h-0.5 bg-white transition-all ${mobileOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
@@ -172,6 +226,7 @@ export default function PublicNavbar({ userProfile }: Props) {
             <p className="text-white/50 text-[11px] font-bold uppercase tracking-wider mb-2">Menu Utama</p>
             <Link href="/welcome" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Beranda</Link>
             <Link href="/kelas" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Kelas</Link>
+            <Link href="/ustadz" className="block py-2 text-white text-sm font-medium hover:text-[#d3ad0f]" onClick={() => setMobileOpen(false)}>Ustadz</Link>
           </div>
           <div className="space-y-1 py-2 border-b border-white/10">
             <p className="text-white/50 text-[11px] font-bold uppercase tracking-wider mb-2">Fitur</p>
