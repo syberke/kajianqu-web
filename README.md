@@ -59,6 +59,9 @@ Build web statis:
 npm run build:web
 ```
 
+Vercel membaca `vercel.json` di root dan menerbitkan hasil static export
+`apps/web/dist`.
+
 Pemeriksaan lengkap:
 
 ```bash
