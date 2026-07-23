@@ -7,25 +7,25 @@ export async function GET() {
   const user = await getAuthenticatedUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const messages = await db.message.findMany({
+  const conversations = await db.conversation.findMany({
     where: {
-      OR: [{ senderId: user.id }, { receiverId: user.id }],
+      OR: [{ studentId: user.id }, { asatidzId: user.id }],
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { updatedAt: 'desc' },
     include: {
-      sender: { select: { id: true, nama: true, fotoUrl: true, role: true } },
-      receiver: { select: { id: true, nama: true, fotoUrl: true, role: true } },
+      student: { select: { id: true, nama: true, fotoUrl: true, role: true } },
+      asatidz: { select: { id: true, nama: true, fotoUrl: true, role: true } },
+      messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+      _count: { select: { messages: { where: { receiverId: user.id, isRead: false } } } },
     },
-    take: 500,
+    take: 100,
   })
 
-  const seen = new Set<string>()
-  const conversations = messages.flatMap((message) => {
-    const counterpart = message.senderId === user.id ? message.receiver : message.sender
-    if (!counterpart) return []
-    if (seen.has(counterpart.id)) return []
-    seen.add(counterpart.id)
-    return [{
+  return NextResponse.json({
+    conversations: conversations.map((conversation) => {
+      const counterpart = conversation.studentId === user.id ? conversation.asatidz : conversation.student
+      const lastMessage = conversation.messages[0]
+      return {
       user: {
         id: counterpart.id,
         nama: counterpart.nama,
@@ -33,13 +33,14 @@ export async function GET() {
         role: counterpart.role,
       },
       lastMessage: {
-        id: message.id,
-        content: message.content,
-        createdAt: message.createdAt?.toISOString() ?? null,
-        mine: message.senderId === user.id,
+        id: lastMessage?.id ?? conversation.id,
+        content: lastMessage?.content ?? 'Percakapan baru',
+        createdAt: lastMessage?.createdAt?.toISOString() ?? conversation.createdAt.toISOString(),
+        mine: lastMessage?.senderId === user.id,
       },
-    }]
+      unreadCount: conversation._count.messages,
+    }
+    }),
+    unreadTotal: conversations.reduce((total, conversation) => total + conversation._count.messages, 0),
   })
-
-  return NextResponse.json({ conversations })
 }

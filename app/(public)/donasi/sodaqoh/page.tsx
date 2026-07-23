@@ -158,8 +158,8 @@ export default function FormDonasiSodaqoh({ slug }: { slug: string }) {
                 <div className="space-y-3">
                   <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-widest">Metode Pembayaran</label>
                   <div className="relative">
-                    <select className="w-full h-[56px] px-5 bg-white border-2 border-gray-100 rounded-[16px] focus:border-[#157a52] focus:ring-4 focus:ring-[#157a52]/10 outline-none font-semibold text-[#0c1421] appearance-none cursor-pointer transition-all">
-                      <option value="" disabled selected>Pilih Metode Pembayaran</option>
+                    <select defaultValue="" className="w-full h-[56px] px-5 bg-white border-2 border-gray-100 rounded-[16px] focus:border-[#157a52] focus:ring-4 focus:ring-[#157a52]/10 outline-none font-semibold text-[#0c1421] appearance-none cursor-pointer transition-all">
+                      <option value="" disabled>Pilih Metode Pembayaran</option>
                       <option>Transfer Bank (Konfirmasi Otomatis)</option>
                       <option>E-Wallet (OVO / Dana / GoPay)</option>
                       <option>QRIS</option>

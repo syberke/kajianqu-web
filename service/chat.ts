@@ -15,6 +15,7 @@ export interface ChatMessage {
 export interface ChatConversation {
   user: ChatUser
   lastMessage: ChatMessage
+  unreadCount: number
 }
 
 export const ChatService = {

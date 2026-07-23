@@ -24,8 +24,14 @@ model Profile {
   enrollments       PrivateClassEnrollment[] @relation("EnrollmentStudent")
   sentMessages      Message[]                @relation("MessageSender")
   receivedMessages  Message[]                @relation("MessageReceiver")
+  studentChats      Conversation[]           @relation("ConversationStudent")
+  asatidzChats      Conversation[]           @relation("ConversationAsatidz")
   donations         Donation[]               @relation("DonationUser")
   privateClassPages PrivateClassPage[]       @relation("PrivateClassAsatidz")
+  savedItems        SavedItem[]              @relation("SavedItemOwner")
+  savedAsatidz      SavedItem[]              @relation("SavedItemAsatidz")
+  reviewsWritten    Review[]                 @relation("ReviewAuthor")
+  reviewsReceived   Review[]                 @relation("ReviewAsatidz")
 
   @@index([role])
   @@map("profiles")
@@ -197,25 +203,26 @@ model Keilmuan {
 }
 
 model Material {
-  id           String    @id @default(uuid()) @db.Uuid
+  id           String      @id @default(uuid()) @db.Uuid
   title        String
   slug         String
   summary      String?
   description  String?
-  youtubeUrl   String?   @map("youtube_url")
-  thumbnailUrl String?   @map("thumbnail_url")
+  youtubeUrl   String?     @map("youtube_url")
+  thumbnailUrl String?     @map("thumbnail_url")
   level        String?
   type         String
-  isPublished  Boolean   @default(false) @map("is_published")
-  reviewStatus String    @default("pending") @map("review_status")
-  reviewNote   String?   @map("review_note")
-  keilmuanId   String?   @map("keilmuan_id") @db.Uuid
-  asatidzId    String?   @map("asatidz_id") @db.Uuid
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  keilmuan     Keilmuan? @relation(fields: [keilmuanId], references: [id])
-  asatidz      Profile?  @relation("MaterialAsatidz", fields: [asatidzId], references: [id])
+  isPublished  Boolean     @default(false) @map("is_published")
+  reviewStatus String      @default("pending") @map("review_status")
+  reviewNote   String?     @map("review_note")
+  keilmuanId   String?     @map("keilmuan_id") @db.Uuid
+  asatidzId    String?     @map("asatidz_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  keilmuan     Keilmuan?   @relation(fields: [keilmuanId], references: [id])
+  asatidz      Profile?    @relation("MaterialAsatidz", fields: [asatidzId], references: [id])
   quizzes      Quiz[]
+  savedItems   SavedItem[]
 
   @@index([asatidzId, createdAt])
   @@index([keilmuanId])
@@ -252,6 +259,7 @@ model PrivateClassPage {
   updatedAt   DateTime?                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   asatidz     Profile?                 @relation("PrivateClassAsatidz", fields: [asatidzId], references: [id], onDelete: SetNull)
   enrollments PrivateClassEnrollment[]
+  savedItems  SavedItem[]
 
   @@index([asatidzId, createdAt])
   @@index([isActive, createdAt])
@@ -313,17 +321,70 @@ model LiveSession {
 }
 
 model Message {
-  id             String    @id @default(uuid()) @db.Uuid
-  senderId       String?   @map("sender_id") @db.Uuid
-  receiverId     String?   @map("receiver_id") @db.Uuid
-  conversationId String?   @map("conversation_id") @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
+  senderId       String?       @map("sender_id") @db.Uuid
+  receiverId     String?       @map("receiver_id") @db.Uuid
+  conversationId String?       @map("conversation_id") @db.Uuid
   content        String
-  isRead         Boolean?  @default(false) @map("is_read")
-  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  sender         Profile?  @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
-  receiver       Profile?  @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
+  isRead         Boolean?      @default(false) @map("is_read")
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  sender         Profile?      @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  receiver       Profile?      @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([receiverId, createdAt])
   @@index([senderId, createdAt])
   @@map("messages")
+}
+
+model Conversation {
+  id        String    @id @default(uuid()) @db.Uuid
+  studentId String    @map("student_id") @db.Uuid
+  asatidzId String    @map("asatidz_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  student   Profile   @relation("ConversationStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  asatidz   Profile   @relation("ConversationAsatidz", fields: [asatidzId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([studentId, asatidzId])
+  @@index([studentId, updatedAt])
+  @@index([asatidzId, updatedAt])
+  @@map("conversations")
+}
+
+model SavedItem {
+  id             String            @id @default(uuid()) @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  asatidzId      String?           @map("asatidz_id") @db.Uuid
+  privateClassId String?           @map("private_class_id") @db.Uuid
+  materialId     String?           @map("material_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           Profile           @relation("SavedItemOwner", fields: [userId], references: [id], onDelete: Cascade)
+  asatidz        Profile?          @relation("SavedItemAsatidz", fields: [asatidzId], references: [id], onDelete: Cascade)
+  privateClass   PrivateClassPage? @relation(fields: [privateClassId], references: [id], onDelete: Cascade)
+  material       Material?         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([asatidzId])
+  @@index([privateClassId])
+  @@index([materialId])
+  @@map("saved_items")
+}
+
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  reviewerId String   @map("reviewer_id") @db.Uuid
+  asatidzId  String   @map("asatidz_id") @db.Uuid
+  rating     Int
+  content    String
+  status     String   @default("published")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  reviewer   Profile  @relation("ReviewAuthor", fields: [reviewerId], references: [id], onDelete: Cascade)
+  asatidz    Profile  @relation("ReviewAsatidz", fields: [asatidzId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewerId, asatidzId])
+  @@index([asatidzId, status, createdAt])
+  @@map("reviews")
 }

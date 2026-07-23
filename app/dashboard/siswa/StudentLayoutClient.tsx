@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BookOpen, Bot, CircleUserRound, HandCoins, Home, Layers3, LogOut, Menu, X } from 'lucide-react'
+import { Bell, Bookmark, BookOpen, Bot, CircleUserRound, HandCoins, Home, Layers3, LogOut, Menu, MessageCircle, UsersRound, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { supabase } from '@/lib/supabase/client'
@@ -14,6 +14,10 @@ const navigation = [
   { label: 'Quran AI', href: '/quran-ai', icon: Bot },
   { label: 'Keilmuan', href: '/keilmuan', icon: BookOpen },
   { label: 'Kelas', href: '/kelas', icon: Layers3 },
+  { label: 'Daftar Ustadz', href: '/ustadz', icon: UsersRound },
+  { label: 'Chat Ustadz', href: '/dashboard/siswa/chat', icon: MessageCircle },
+  { label: 'Notifikasi', href: '/dashboard/siswa/notifications', icon: Bell },
+  { label: 'Tersimpan', href: '/dashboard/siswa/favorites', icon: Bookmark },
   { label: 'Donasi', href: '/dashboard/siswa/donation', icon: HandCoins },
   { label: 'Profil', href: '/dashboard/siswa/profile', icon: CircleUserRound },
 ]
@@ -31,7 +35,7 @@ export default function StudentLayoutClient({ children, profile }: { children: R
 
   const sidebar = <aside className="flex h-full w-72 flex-col bg-[#064E3B] text-white">
     <Link href="/welcome" className="flex items-center gap-3 px-7 py-8"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10"><BookOpen /></span><span className="text-2xl font-black tracking-tight">KajianQu</span></Link>
-    <nav className="flex-1 space-y-2 px-4">{navigation.map(({ label, href, icon: Icon }) => {
+    <nav className="flex-1 space-y-2 overflow-y-auto px-4">{navigation.map(({ label, href, icon: Icon }) => {
       const active = href === '/dashboard/siswa' ? pathname === href : pathname.startsWith(href)
       return <Link key={href} href={href} onClick={() => setOpen(false)} className={`flex items-center gap-4 rounded-2xl px-5 py-4 text-sm font-bold transition ${active ? 'bg-white text-[#064E3B] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}><Icon size={20} />{label}</Link>
     })}</nav>

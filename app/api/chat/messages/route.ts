@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const [sender, receiver] = await Promise.all([
     db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, isActive: true, asatidzProfile: { select: { approved: true } } },
+      select: { nama: true, role: true, isActive: true, asatidzProfile: { select: { approved: true } } },
     }),
     db.profile.findUnique({
       where: { id: receiverId },
@@ -50,8 +50,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Anda tidak memiliki akses untuk percakapan ini' }, { status: 403 })
   }
 
-  const message = await db.message.create({
-    data: { senderId: user.id, receiverId, content: content.slice(0, 5000) },
+  const studentId = sender.role === 'siswa' ? user.id : receiverId
+  const asatidzId = sender.role === 'asatidz' ? user.id : receiverId
+  const receiverChatUrl = receiver.role === 'asatidz'
+    ? `/dashboard/asatidz/chat?user=${user.id}`
+    : `/dashboard/siswa/chat?ustadz=${user.id}`
+
+  const existingConversation = sender.role === 'asatidz'
+    ? await db.conversation.findUnique({ where: { studentId_asatidzId: { studentId, asatidzId } }, select: { id: true } })
+    : null
+  if (sender.role === 'asatidz' && !existingConversation) {
+    return NextResponse.json({ error: 'Siswa harus memulai percakapan terlebih dahulu' }, { status: 403 })
+  }
+
+  const message = await db.$transaction(async (transaction) => {
+    const conversation = sender.role === 'siswa'
+      ? await transaction.conversation.upsert({
+          where: { studentId_asatidzId: { studentId, asatidzId } },
+          update: { updatedAt: new Date() },
+          create: { studentId, asatidzId },
+        })
+      : await transaction.conversation.update({
+          where: { id: existingConversation!.id },
+          data: { updatedAt: new Date() },
+        })
+    const created = await transaction.message.create({
+      data: {
+        senderId: user.id,
+        receiverId,
+        conversationId: conversation.id,
+        content: content.slice(0, 5000),
+      },
+    })
+    await transaction.notification.create({
+      data: {
+        recipientId: receiverId,
+        type: 'chat',
+        title: 'Pesan baru',
+        message: `Anda menerima pesan baru dari ${sender.nama || 'pengguna KajianQu'}.`,
+        actionUrl: receiverChatUrl,
+      },
+    })
+    return created
   })
 
   return NextResponse.json({
