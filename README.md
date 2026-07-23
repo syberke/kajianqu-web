@@ -74,6 +74,8 @@ Migration utama:
 
 ```text
 supabase/migrations/20260723084324_kajianqu_react_native_platform.sql
+supabase/migrations/20260723090000_complete_product_access.sql
+supabase/migrations/20260723092500_harden_public_directory.sql
 ```
 
 Untuk lingkungan baru:
@@ -101,6 +103,15 @@ Fungsi ini memerlukan JWT, membatasi ukuran dan tipe file, dan menyimpan API key
 - Pencocokan kata tidak mengklaim dapat menilai seluruh hukum tajwid.
 - Hasil confidence rendah harus divalidasi asatidz.
 - Transkripsi dan penilaian dipisahkan agar provider dapat diganti tanpa mengubah UI.
+
+## Fitur yang terhubung
+
+- Katalog dan detail materi dengan filter tingkat.
+- Direktori publik asatidz yang hanya menyimpan field aman.
+- Kelas private, permintaan bergabung, dan chat kelas berbasis keanggotaan.
+- Live event, donasi, doa, dzikir, quote, kiblat, Bahtsul Masail, dan Muamalat.
+- Chat realtime, profil, riwayat Quran, dan achievement.
+- Trigger pendaftaran untuk membuat profil siswa atau asatidz secara otomatis.
 
 ## Dokumen
 

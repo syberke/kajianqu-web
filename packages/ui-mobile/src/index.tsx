@@ -18,12 +18,13 @@ import {
   Check,
   ChevronRight,
   CircleAlert,
-  CircleDollarSign,
+  Compass,
   GraduationCap,
   HeartHandshake,
   Library,
   MessageCircle,
   Mic,
+  Quote,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -45,7 +46,12 @@ import {
   getSupabase,
   getSurahVerses,
   isSupabaseConfigured,
+  listLiveEvents,
+  listPrivateClasses,
+  listPublishedMaterials,
+  listPublicAsatidz,
   listSurahs,
+  saveQuranSession,
   transcribeQuran,
 } from '@kajianku/api-client'
 import { compareRecitation, fallbackSurahs, type QuranPracticeResult } from '@kajianku/quran-core'
@@ -88,6 +94,8 @@ export function BrandHeader({
 }) {
   return (
     <View style={[styles.brandHeader, compact && styles.brandHeaderCompact]}>
+      <View style={styles.brandGlowLarge} />
+      <View style={styles.brandGlowGold} />
       <View style={styles.brandMark}>
         <BookOpen color={colors.gold} size={compact ? 22 : 28} strokeWidth={2.4} />
         <Text style={[styles.brandName, compact && styles.brandNameCompact]}>KajianQu</Text>
@@ -163,16 +171,27 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 const featureItems = [
   { title: "Al-Qur'an", icon: BookOpen, href: '/quran' },
   { title: 'AI Quran', icon: Bot, href: '/ai-quran' },
-  { title: 'Keilmuan', icon: GraduationCap, href: '/materi' },
+  { title: 'Materi', icon: GraduationCap, href: '/materi' },
+  { title: 'Asatidz', icon: Users, href: '/asatidz-list' },
   { title: 'Kelas', icon: Video, href: '/kelas' },
+  { title: 'Live', icon: Video, href: '/live' },
   { title: 'Chat', icon: MessageCircle, href: '/chat' },
+  { title: "Do'a", icon: BookOpen, href: '/doa' },
+  { title: 'Dzikir', icon: Sparkles, href: '/dzikir' },
+  { title: 'Kiblat', icon: Compass, href: '/kiblat' },
+  { title: 'Quote', icon: Quote, href: '/quote' },
   { title: 'Donasi', icon: HeartHandshake, href: '/donasi' },
 ]
 
 export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate: Navigate }) {
   const { width } = useWindowDimensions()
-  const columns = width >= 1024 ? 6 : width >= 640 ? 3 : 2
+  const columns = width >= 1100 ? 6 : width >= 700 ? 4 : width >= 450 ? 3 : 2
   const cardWidth = `${100 / columns - 2}%` as `${number}%`
+  const materials = useQuery({ queryKey: ['home-materials'], queryFn: () => listPublishedMaterials(3) })
+  const live = useQuery({ queryKey: ['home-live'], queryFn: listLiveEvents })
+  const asatidz = useQuery({ queryKey: ['home-asatidz'], queryFn: listPublicAsatidz })
+  const classes = useQuery({ queryKey: ['home-classes'], queryFn: listPrivateClasses })
+  const nextLive = live.data?.find((item) => item.status === 'live') || live.data?.[0]
   return (
     <AppScreen padded={false}>
       <BrandHeader
@@ -180,18 +199,29 @@ export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate
         subtitle="Belajar, bertumbuh, dan dekat dengan Al-Qur'an"
       />
       <View style={styles.bodySection}>
-        <SurfaceCard style={styles.prayerCard}>
-          <View>
-            <Text style={styles.eyebrow}>DZUHUR BERIKUTNYA</Text>
-            <Text style={styles.prayerTime}>11:54 WIB</Text>
-            <Text style={styles.muted}>Malang, Jawa Timur</Text>
+        <View style={[styles.homeIntro, width < 680 && styles.homeIntroCompact]}>
+          <View style={styles.homeIntroCopy}>
+            <Text style={styles.eyebrow}>SATU TEMPAT UNTUK BELAJAR</Text>
+            <Text style={styles.homeIntroTitle}>Baca Al-Qur'an, ikuti kajian, dan bertanya kepada asatidz.</Text>
+            <Text style={styles.homeIntroText}>Konten publik mengikuti status publish dan approval. Data pribadi tetap dilindungi sesuai peran akun.</Text>
+            <View style={styles.homeActions}>
+              <PrimaryButton label="Mulai baca Quran" onPress={() => navigate('/quran')} icon={<BookOpen color={colors.white} size={18} />} />
+              <PrimaryButton label="Lihat materi" onPress={() => navigate('/materi')} tone="secondary" />
+            </View>
           </View>
-          <View style={styles.prayerBadge}>
-            <Text style={styles.prayerBadgeText}>01:30:06</Text>
+          <View style={styles.homeStats}>
+            <View style={styles.homeStat}>
+              <Text style={styles.homeStatValue}>{asatidz.data?.length ?? '–'}</Text>
+              <Text style={styles.muted}>asatidz terverifikasi</Text>
+            </View>
+            <View style={styles.homeStat}>
+              <Text style={styles.homeStatValue}>{classes.data?.length ?? '–'}</Text>
+              <Text style={styles.muted}>kelas tersedia</Text>
+            </View>
           </View>
-        </SurfaceCard>
+        </View>
 
-        <SectionTitle title="Fitur utama" subtitle="Pilih aktivitas belajar Anda" />
+        <SectionTitle title="Fitur utama" subtitle="Semua jalur tersambung ke halaman yang dapat digunakan" />
         <View style={styles.featureGrid}>
           {featureItems.map((item) => {
             const Icon = item.icon
@@ -211,40 +241,42 @@ export function HomeScreen({ role = 'siswa', navigate }: { role?: Role; navigate
           })}
         </View>
 
-        <SectionTitle title="Lanjutkan belajar" subtitle="Progress terakhir Anda" />
-        <SurfaceCard onPress={() => navigate('/quran/1')}>
-          <View style={styles.rowBetween}>
+        {nextLive ? (
+          <>
+            <SectionTitle title={nextLive.status === 'live' ? 'Sedang live' : 'Jadwal kajian terdekat'} subtitle="Jadwal berasal dari data acara KajianQu" />
+            <SurfaceCard onPress={() => navigate('/live')} style={styles.liveHighlight}>
             <View style={styles.rowGap}>
-              <View style={styles.softIcon}>
-                <BookOpen color={colors.primary} size={22} />
+                <View style={styles.liveIcon}><Video color={colors.white} size={23} /></View>
+                <View style={styles.flex}>
+                  <Text style={styles.cardTitle}>{nextLive.title}</Text>
+                  <Text style={styles.muted}>{new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(nextLive.startsAt))}</Text>
+                </View>
+                <ChevronRight color={colors.primary} size={21} />
               </View>
-              <View>
-                <Text style={styles.cardTitle}>Surah Al-Fatihah</Text>
-                <Text style={styles.muted}>Ayat 1 dari 7</Text>
-              </View>
-            </View>
-            <Text style={styles.progressValue}>14%</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: '14%' }]} />
-          </View>
-        </SurfaceCard>
+            </SurfaceCard>
+          </>
+        ) : null}
 
         <SectionTitle title="Kajian pilihan" subtitle="Materi terbaru dari asatidz terverifikasi" />
-        {['Adab kepada guru', 'Fiqih wudhu sehari-hari', 'Menjaga hati di era digital'].map((title, index) => (
-          <SurfaceCard key={title} onPress={() => navigate(`/materi/${index + 1}`)}>
+        {materials.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+        {materials.isError ? <ErrorState message={materials.error.message} onRetry={() => void materials.refetch()} /> : null}
+        {materials.data?.map((item) => (
+          <SurfaceCard key={item.id} onPress={() => navigate(`/materi/${item.slug || item.id}`)}>
             <View style={styles.rowGap}>
               <View style={styles.videoThumb}>
                 <Video color={colors.white} size={24} />
               </View>
               <View style={styles.flex}>
-                <Text style={styles.cardTitle}>{title}</Text>
-                <Text style={styles.muted}>Ust. Ahmad Hidayat • {24 + index * 7} menit</Text>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text numberOfLines={2} style={styles.muted}>{item.summary || item.description || 'Materi KajianQu'}</Text>
               </View>
               <ChevronRight color={colors.textMuted} size={20} />
             </View>
           </SurfaceCard>
         ))}
+        {!materials.isLoading && !materials.data?.length ? (
+          <EmptyState title="Materi belum dipublikasikan" description="Materi akan tampil otomatis setelah disetujui dan dipublikasikan." />
+        ) : null}
       </View>
     </AppScreen>
   )
@@ -271,10 +303,6 @@ export function QuranLibraryScreen({ navigate }: { navigate: Navigate }) {
             style={styles.searchInput}
             value={search}
           />
-        </View>
-        <View style={styles.segment}>
-          <View style={styles.segmentActive}><Text style={styles.segmentActiveText}>Surah</Text></View>
-          <View style={styles.segmentItem}><Text style={styles.segmentText}>Juz</Text></View>
         </View>
         {query.isLoading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
         {filtered.map((surah) => (
@@ -368,6 +396,7 @@ export function AiPracticeScreen({ mode }: { mode: 'murojaah' | 'belajar' }) {
   const [ayahEnd, setAyahEnd] = useState('2')
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saveWarning, setSaveWarning] = useState<string | null>(null)
   const [result, setResult] = useState<QuranPracticeResult | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
@@ -403,8 +432,10 @@ export function AiPracticeScreen({ mode }: { mode: 'murojaah' | 'belajar' }) {
 
   async function toggleRecording() {
     setError(null)
+    setSaveWarning(null)
     setResult(null)
     if (recorderState.isRecording) {
+      const durationMillis = recorderState.durationMillis || 0
       await recorder.stop()
       if (!recorder.uri) {
         setError('Rekaman tidak ditemukan. Coba ulangi dan pastikan izin mikrofon aktif.')
@@ -419,8 +450,27 @@ export function AiPracticeScreen({ mode }: { mode: 'murojaah' | 'belajar' }) {
           ayahStart: parsedStart,
           ayahEnd: parsedEnd,
         })
+        const comparison = compareRecitation(expectedText, transcription.transcript)
         setConfidence(transcription.confidence)
-        setResult(compareRecitation(expectedText, transcription.transcript))
+        setResult(comparison)
+        const surahName = fallbackSurahs.find((item) => item.id === parsedSurah)?.nameSimple || `Surah ${parsedSurah}`
+        try {
+          await saveQuranSession({
+            mode,
+            surahId: parsedSurah,
+            surahName,
+            ayahStart: parsedStart,
+            ayahEnd: parsedEnd,
+            totalWords: comparison.totalWords,
+            correctWords: comparison.correctWords,
+            accuracy: comparison.accuracy,
+            mistakes: comparison.feedback.filter((word) => word.status !== 'correct'),
+            durationSeconds: Math.max(1, Math.round(durationMillis / 1000)),
+            transcript: transcription.transcript,
+          })
+        } catch {
+          setSaveWarning('Hasil sudah tampil, tetapi riwayat belum tersimpan. Periksa koneksi lalu coba sesi berikutnya.')
+        }
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'Bacaan belum berhasil diproses.')
       } finally {
@@ -435,6 +485,12 @@ export function AiPracticeScreen({ mode }: { mode: 'murojaah' | 'belajar' }) {
     await recorder.prepareToRecordAsync()
     recorder.record()
   }
+
+  useEffect(() => {
+    if (recorderState.isRecording && (recorderState.durationMillis || 0) >= 180_000 && !processing) {
+      void toggleRecording()
+    }
+  }, [processing, recorderState.durationMillis, recorderState.isRecording])
 
   return (
     <AppScreen>
@@ -487,6 +543,12 @@ export function AiPracticeScreen({ mode }: { mode: 'murojaah' | 'belajar' }) {
         <Text style={styles.muted}>{recorderState.isRecording ? 'Tekan untuk selesai' : 'Rekam maksimal 3 menit per sesi'}</Text>
       </View>
       {error ? <ErrorState message={error} /> : null}
+      {saveWarning ? (
+        <View style={styles.warning}>
+          <CircleAlert color={colors.warning} size={20} />
+          <Text style={styles.warningText}>{saveWarning}</Text>
+        </View>
+      ) : null}
       {result ? <PracticeResult result={result} confidence={confidence} expectedText={expectedText} /> : null}
       {!isSupabaseConfigured() ? (
         <View style={styles.warning}>
@@ -642,24 +704,24 @@ export function AuthScreen({ mode = 'login', navigate }: { mode?: 'login' | 'reg
   )
 }
 
-const roleModules: Record<Role, Array<{ title: string; subtitle: string; icon: typeof Users }>> = {
+const roleModules: Record<Role, Array<{ title: string; subtitle: string; icon: typeof Users; href: string }>> = {
   admin: [
-    { title: 'Verifikasi asatidz', subtitle: '12 pendaftaran menunggu tinjauan', icon: ShieldCheck },
-    { title: 'Review materi', subtitle: '8 materi perlu diperiksa', icon: Library },
-    { title: 'Donasi', subtitle: '5 transaksi menunggu verifikasi', icon: CircleDollarSign },
-    { title: 'Moderasi', subtitle: '2 laporan baru', icon: MessageCircle },
+    { title: 'Asatidz', subtitle: 'Lihat direktori pengajar yang sudah terverifikasi', icon: ShieldCheck, href: '/asatidz-list' },
+    { title: 'Materi', subtitle: 'Lihat materi yang sudah lolos review dan dipublikasikan', icon: Library, href: '/materi' },
+    { title: 'Donasi', subtitle: 'Buka program dan alur transaksi donasi', icon: HeartHandshake, href: '/donasi' },
+    { title: 'Moderasi', subtitle: 'Pantau ruang diskusi yang dapat dibaca publik', icon: MessageCircle, href: '/bahtsul-masail' },
   ],
   asatidz: [
-    { title: 'Materi saya', subtitle: '3 published, 1 dalam review', icon: Library },
-    { title: 'Kelas private', subtitle: '2 kelas aktif', icon: GraduationCap },
-    { title: 'Chat siswa', subtitle: '6 pesan belum dibaca', icon: MessageCircle },
-    { title: 'Pemasukan', subtitle: 'Lihat fee dan payout', icon: CircleDollarSign },
+    { title: 'Materi', subtitle: 'Buka katalog materi yang sudah dipublikasikan', icon: Library, href: '/materi' },
+    { title: 'Kelas private', subtitle: 'Lihat jadwal dan status pendaftaran kelas', icon: GraduationCap, href: '/kelas' },
+    { title: 'Chat siswa', subtitle: 'Buka pesan langsung dan grup kelas Anda', icon: MessageCircle, href: '/chat' },
+    { title: 'Jadwal live', subtitle: 'Buka acara live KajianQu yang tersedia', icon: Video, href: '/live' },
   ],
   siswa: [
-    { title: 'Progres belajar', subtitle: '4 materi sedang dipelajari', icon: GraduationCap },
-    { title: 'Kelas saya', subtitle: '1 pertemuan hari ini', icon: Video },
-    { title: 'Latihan Quran', subtitle: 'Terakhir murojaah Al-Fatihah', icon: BookOpen },
-    { title: 'Chat asatidz', subtitle: 'Tanya dalam konteks kelas', icon: MessageCircle },
+    { title: 'Materi belajar', subtitle: 'Pilih materi yang telah disetujui', icon: GraduationCap, href: '/materi' },
+    { title: 'Kelas saya', subtitle: 'Daftar dan buka kelas yang tersedia', icon: Video, href: '/kelas' },
+    { title: 'Latihan Quran', subtitle: 'Murojaah atau belajar dengan evaluasi kata', icon: BookOpen, href: '/ai-quran' },
+    { title: 'Chat asatidz', subtitle: 'Tanya melalui ruang yang diizinkan', icon: MessageCircle, href: '/chat' },
   ],
 }
 
@@ -674,24 +736,12 @@ export function RoleDashboardScreen({ role, navigate }: { role: Role; navigate: 
         subtitle="Ringkasan aktivitas dan pekerjaan penting"
       />
       <View style={styles.bodySection}>
-        <View style={styles.metricGrid}>
-          {[
-            ['Aktif', role === 'admin' ? '1.248 pengguna' : '7 hari'],
-            ['Perlu aksi', role === 'admin' ? '27 item' : '2 item'],
-            ['Selesai', role === 'asatidz' ? '18 materi' : '68%'],
-          ].map(([label, value]) => (
-            <SurfaceCard key={label} style={styles.metricCard}>
-              <Text style={styles.metricValue}>{value}</Text>
-              <Text style={styles.muted}>{label}</Text>
-            </SurfaceCard>
-          ))}
-        </View>
-        <SectionTitle title="Menu kerja" subtitle="Akses modul sesuai permission Anda" />
+        <SectionTitle title="Menu kerja" subtitle="Akses modul sesuai permission akun Anda" />
         <View style={styles.dashboardGrid}>
           {roleModules[role].map((module) => {
             const Icon = module.icon
             return (
-              <Pressable key={module.title} onPress={() => navigate(`/${role}/${slugify(module.title)}`)} style={[styles.dashboardModule, { width: itemWidth }]}>
+              <Pressable key={module.title} onPress={() => navigate(module.href)} style={[styles.dashboardModule, { width: itemWidth }]}>
                 <View style={styles.softIcon}><Icon color={colors.primary} size={24} /></View>
                 <Text style={styles.cardTitle}>{module.title}</Text>
                 <Text style={styles.muted}>{module.subtitle}</Text>
@@ -700,14 +750,6 @@ export function RoleDashboardScreen({ role, navigate }: { role: Role; navigate: 
           })}
         </View>
       </View>
-    </AppScreen>
-  )
-}
-
-export function PlaceholderScreen({ title, description }: { title: string; description?: string }) {
-  return (
-    <AppScreen>
-      <EmptyState title={title} description={description || 'Halaman ini siap dihubungkan ke data Supabase.'} />
     </AppScreen>
   )
 }
@@ -738,18 +780,16 @@ function formatDuration(value: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-function slugify(value: string) {
-  return value.toLowerCase().replace(/\s+/g, '-')
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.background },
   scrollContent: { flexGrow: 1 },
   screenContent: { width: '100%', maxWidth: 1240, alignSelf: 'center' },
   padded: { padding: spacing.lg },
-  brandHeader: { backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingTop: 52, paddingBottom: 34, borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
+  brandHeader: { backgroundColor: colors.primaryDark, paddingHorizontal: spacing.xl, paddingTop: 52, paddingBottom: 34, borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg, overflow: 'hidden' },
   brandHeaderCompact: { paddingTop: 24, paddingBottom: 20 },
+  brandGlowLarge: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: colors.primary, opacity: 0.55, right: -75, top: -90 },
+  brandGlowGold: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.gold, opacity: 0.09, left: -55, bottom: -95 },
   brandMark: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xl },
   brandName: { color: colors.white, fontWeight: '800', fontSize: 20 },
   brandNameCompact: { fontSize: 17 },
@@ -769,6 +809,17 @@ const styles = StyleSheet.create({
   sectionHeadingCopy: { flex: 1 },
   sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
   sectionSubtitle: { color: colors.textMuted, marginTop: 2, lineHeight: 20 },
+  homeIntro: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, flexDirection: 'row', alignItems: 'stretch', gap: spacing.xl, ...shadow.card },
+  homeIntroCompact: { flexDirection: 'column' },
+  homeIntroCopy: { flex: 1, justifyContent: 'center' },
+  homeIntroTitle: { color: colors.primaryDark, fontSize: 27, lineHeight: 36, fontWeight: '900', marginTop: spacing.sm, maxWidth: 720 },
+  homeIntroText: { color: colors.textMuted, fontSize: 15, lineHeight: 24, marginTop: spacing.sm, maxWidth: 720 },
+  homeActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.lg },
+  homeStats: { minWidth: 220, backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.lg, justifyContent: 'center', gap: spacing.md },
+  homeStat: { borderBottomWidth: 1, borderBottomColor: '#C8E1D8', paddingBottom: spacing.sm },
+  homeStatValue: { color: colors.primaryDark, fontSize: 27, fontWeight: '900' },
+  liveHighlight: { borderColor: '#A7D7C6', backgroundColor: '#F6FCF9' },
+  liveIcon: { width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   prayerCard: { backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   eyebrow: { color: colors.primary, fontSize: 11, letterSpacing: 1.2, fontWeight: '800' },
   prayerTime: { color: colors.primaryDark, fontSize: 25, fontWeight: '800', marginVertical: 4 },
@@ -863,3 +914,5 @@ const styles = StyleSheet.create({
   errorState: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md, alignItems: 'flex-start' },
   errorText: { color: colors.danger, lineHeight: 20 },
 })
+
+export * from './features'
