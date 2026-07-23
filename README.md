@@ -70,7 +70,7 @@ npm run check
 Migration utama:
 
 ```text
-supabase/migrations/20260723023000_kajianqu_react_native_platform.sql
+supabase/migrations/20260723084324_kajianqu_react_native_platform.sql
 ```
 
 Untuk lingkungan baru:

@@ -1,3 +1,4 @@
+-- Applied to production as migration version 20260723084324.
 begin;
 
 create extension if not exists pgcrypto;

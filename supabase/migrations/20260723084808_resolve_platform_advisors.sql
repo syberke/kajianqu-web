@@ -1,3 +1,4 @@
+-- Applied to production as migration version 20260723084808.
 begin;
 
 -- Foreign-key indexes keep joins and cascading deletes predictable as data grows.
