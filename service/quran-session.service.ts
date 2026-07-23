@@ -3,22 +3,41 @@ import type { QuranSession, SessionHistory } from '@/types/quran'
 export async function saveSession(
   session: Omit<QuranSession, 'id' | 'createdAt' | 'userId'>,
 ): Promise<string | null> {
-  const response = await fetch('/api/quran/sessions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(session),
-  })
+  try {
+    const response = await fetch('/api/quran/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(session),
+    })
 
-  if (!response.ok) {
-    console.error('Error saving Quran session', await response.text())
+    const rawPayload = await response.text()
+    let payload: { id?: string; error?: string } = {}
+    if (rawPayload) {
+      try {
+        payload = JSON.parse(rawPayload) as { id?: string; error?: string }
+      } catch {
+        payload = {}
+      }
+    }
+
+    if (!response.ok) {
+      console.error('Error saving Quran session', {
+        status: response.status,
+        error: payload.error || rawPayload || 'Respons server kosong',
+      })
+      return null
+    }
+
+    return payload.id ?? null
+  } catch (error) {
+    console.error('Error saving Quran session', {
+      error: error instanceof Error ? error.message : 'Gagal terhubung ke server',
+    })
     return null
   }
-
-  const payload = (await response.json()) as { id?: string }
-  return payload.id ?? null
 }
 
 export async function getSessionHistory(limit = 20): Promise<SessionHistory[]> {
