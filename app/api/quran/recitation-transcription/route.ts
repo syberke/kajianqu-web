@@ -50,8 +50,6 @@ export async function POST(request: Request) {
   if (!formData) return NextResponse.json({ error: 'Form audio tidak valid' }, { status: 400 })
 
   const audio = formData.get('audio')
-  const expectedText = String(formData.get('expectedText') ?? '').trim()
-
   if (!(audio instanceof File) || audio.size === 0 || !audio.type.startsWith('audio/')) {
     return NextResponse.json({ error: 'Rekaman audio wajib dikirim' }, { status: 400 })
   }
@@ -63,9 +61,6 @@ export async function POST(request: Request) {
   }
   if (audio.size > MAX_AUDIO_BYTES) {
     return NextResponse.json({ error: 'Rekaman terlalu besar. Maksimal 18 MB.' }, { status: 413 })
-  }
-  if (!expectedText || expectedText.length > 30_000) {
-    return NextResponse.json({ error: 'Teks ayat acuan tidak valid' }, { status: 400 })
   }
 
   const apiKey = process.env.GEMINI_API_KEY
@@ -83,7 +78,7 @@ export async function POST(request: Request) {
       const retryInstruction =
         attempt === 0
           ? ''
-          : '\nIni percobaan ulang. Fokus pada suara manusia yang terdengar dan jangan mengembalikan teks kosong jika masih ada lafaz yang dapat dikenali.'
+          : '\nDengarkan ulang dari awal sampai akhir. Jangan hanya mengambil pembuka bacaan.'
 
       const response = await client.models.generateContent({
         model: process.env.GEMINI_ANALYSIS_MODEL || DEFAULT_GEMINI_ANALYSIS_MODEL,
@@ -92,12 +87,16 @@ export async function POST(request: Request) {
             role: 'user',
             parts: [
               {
-                text: `Transkripsikan bacaan Al-Qur'an yang benar-benar terdengar pada rekaman ke tulisan Arab.
+                text: `Transkripsikan hanya suara bacaan Arab yang benar-benar terdengar pada rekaman.
 
-Teks ayat acuan berikut hanya boleh dipakai untuk ejaan dan pencocokan kata:
-${expectedText}
-
-Jangan menambahkan kata yang tidak terdengar. Jangan memberi penjelasan, terjemahan, penilaian, atau markdown. Jika benar-benar tidak ada suara manusia yang dapat dikenali, kembalikan transcript kosong.${retryInstruction}`,
+Aturan wajib:
+1. Jangan menebak nama surah atau ayat.
+2. Jangan melengkapi kata, ayat, atau surat setelah pembaca berhenti atau melewati bagian.
+3. Jika pembaca membaca surat yang berbeda, tulis surat yang benar-benar dibaca.
+4. Pertahankan pengulangan, urutan, dan bagian yang terpotong sejauh memang terdengar.
+5. Jangan membetulkan bacaan memakai hafalan Al-Qur'an atau konteks lain.
+6. Jangan memberi penjelasan, terjemahan, penilaian, atau markdown.
+7. Kembalikan transcript kosong hanya jika tidak ada suara manusia yang dapat dikenali.${retryInstruction}`,
               },
               {
                 inlineData: {
