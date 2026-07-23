@@ -1,5 +1,6 @@
-import { PlaceholderScreen } from '@kajianku/ui-web'
+import { router } from 'expo-router'
+import { AsatidzDirectoryScreen } from '@kajianku/ui-web'
 
 export default function AsatidzListPage() {
-  return <PlaceholderScreen title="Daftar asatidz" description="Profil publik hanya menampilkan asatidz berstatus approved." />
+  return <AsatidzDirectoryScreen navigate={(href) => router.push(href as never)} />
 }
